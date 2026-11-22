@@ -206,9 +206,6 @@
   <!-- Contenitore Modali (QR Code, Conferme, Spotlight Post-it) -->
   <div id="modal-container" class="fixed inset-0 z-[9500] hidden items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4"></div>
 
-  <!-- Input nascosto per caricamento file lezione (.json) -->
-  <input type="file" id="import-lesson-file" accept=".json,application/json" class="hidden" />
-
   <script>
     (function () {
       'use strict';
@@ -366,7 +363,6 @@
           phone: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>`,
           qr: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>`,
           download: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`,
-          upload: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>`,
           fullscreen: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>`,
           arrowLeft: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>`,
           arrowRight: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`,
@@ -989,7 +985,7 @@
       }
 
       // =========================================================================
-      // 5. STORE CENTRALE STATO APPLICAZIONE (AulaStore)
+      // 5. STORE CENTRALE STATO APPLICAZIONE (Menti-Free: AulaStore)
       // =========================================================================
       class AulaStore {
         constructor() {
@@ -1209,10 +1205,10 @@
       // =========================================================================
       // 6. STATO UI LOCALE, TIMER QUIZ E PRESERVAZIONE FOCUS
       // =========================================================================
-      let participantDeviceId = localStorage.getItem('aulalive_device_id');
+      let participantDeviceId = sessionStorage.getItem('aulalive_device_id');
       if (!participantDeviceId) {
         participantDeviceId = uid('stu');
-        localStorage.setItem('aulalive_device_id', participantDeviceId);
+        sessionStorage.setItem('aulalive_device_id', participantDeviceId);
       }
 
       const appState = {
@@ -1224,7 +1220,7 @@
         simStudentIndex: 0,
         showQaDrawer: false,
         fontScale: 0, // 0 = normale, 1 = A+, 2 = A++
-        studentName: localStorage.getItem('aulalive_student_name') || '',
+        studentName: sessionStorage.getItem('aulalive_student_name') || '',
         audienceSubTab: 'vote', // 'vote' | 'qa'
         drafts: {} // Bozze input studente per non perdere mai testi o slider tra i render
       };
@@ -1991,7 +1987,7 @@
 
           formHtml = `
             <form data-action="submit-scales" data-slide-id="${escapeHTML(slide.id)}" data-sim="${isSimulator}" class="space-y-4">
-              ${statements.map((st) => {
+              ${statements.map((st, idx) => {
                 const val = currentVals[st.id] || 3;
                 return `
                   <div class="p-3.5 rounded-2xl bg-white border-2 border-slate-200 space-y-2.5">
@@ -2262,13 +2258,6 @@
                     >
                       ${getIcon('play', 'w-4 h-4')} Apri Lezione Demo
                     </button>
-                    <button
-                      type="button"
-                      data-action="import-json"
-                      class="btn-tactile px-5 py-3.5 rounded-2xl bg-white border-2 border-slate-200 hover:border-slate-900 text-slate-800 font-display font-extrabold text-base flex items-center gap-2"
-                    >
-                      ${getIcon('upload', 'w-4 h-4')} Carica File (.json)
-                    </button>
                   </div>
                 </div>
 
@@ -2507,13 +2496,6 @@
                     ${getIcon('download', 'w-3.5 h-3.5')} Esporta JSON
                   </button>
                 </div>
-                <button
-                  type="button"
-                  data-action="import-json"
-                  class="w-full py-2.5 px-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 font-bold text-xs hover:bg-slate-100 flex items-center justify-center gap-1.5"
-                >
-                  ${getIcon('upload', 'w-3.5 h-3.5')} Carica File Lezione (.json)
-                </button>
               </div>
             </div>
           `;
@@ -2574,7 +2556,7 @@
                   </div>
                 </div>
                 <label class="block text-xs font-extrabold uppercase tracking-wider text-slate-500">Affermazioni da Valutare</label>
-                ${(slide.statements || []).map((st) => `
+                ${(slide.statements || []).map((st, idx) => `
                   <div class="flex items-center gap-2">
                     <input
                       type="text"
@@ -2627,7 +2609,7 @@
                   </select>
                 </div>
                 <label class="block text-xs font-extrabold uppercase tracking-wider text-slate-500">Risposte (spunta quella corretta ✓)</label>
-                ${(slide.options || []).map((opt) => `
+                ${(slide.options || []).map((opt, idx) => `
                   <div class="flex items-center gap-2">
                     <button
                       type="button"
@@ -3642,59 +3624,8 @@
           exportRoomResults(store.getRoom(appState.roomCode), 'csv');
         } else if (action === 'export-json') {
           exportRoomResults(store.getRoom(appState.roomCode), 'json');
-        } else if (action === 'import-json') {
-          const fileInput = document.getElementById('import-lesson-file');
-          if (fileInput) {
-            fileInput.value = '';
-            fileInput.click();
-          }
         }
       });
-
-      const importFileInput = document.getElementById('import-lesson-file');
-      if (importFileInput) {
-        importFileInput.addEventListener('change', (e) => {
-          const file = e.target.files && e.target.files[0];
-          if (!file) return;
-          const reader = new FileReader();
-          reader.onload = (ev) => {
-            try {
-              const rawText = String(ev.target && ev.target.result ? ev.target.result : '');
-              const parsed = JSON.parse(rawText);
-              if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.slides) || parsed.slides.length === 0) {
-                showToast('Il file selezionato non è una lezione valida.', 'error');
-                return;
-              }
-              const rawCode = String(parsed.code || '').trim();
-              const code = (/^\d{6}$/.test(rawCode) && !store.rooms[rawCode])
-                ? rawCode
-                : generateRoomCode(store.rooms);
-
-              const importedRoom = {
-                code,
-                title: String(parsed.title || file.name.replace(/\.json$/i, '') || 'Lezione Importata').trim(),
-                theme: THEMES[parsed.theme] ? parsed.theme : 'cream',
-                activeSlideIndex: Math.min(Math.max(0, Number(parsed.activeSlideIndex) || 0), parsed.slides.length - 1),
-                slides: parsed.slides,
-                qa: Array.isArray(parsed.qa) ? parsed.qa : [],
-                updatedAt: Date.now()
-              };
-
-              store.rooms[code] = importedRoom;
-              store.saveToStorage();
-              store.emit();
-              showToast(`Lezione "${importedRoom.title}" caricata!`, 'success');
-              navigateTo('editor', code);
-            } catch (_) {
-              showToast('Errore nella lettura del file JSON.', 'error');
-            }
-          };
-          reader.onerror = () => {
-            showToast('Impossibile leggere il file selezionato.', 'error');
-          };
-          reader.readAsText(file);
-        });
-      }
 
       document.addEventListener('input', (e) => {
         const el = e.target;
@@ -3741,7 +3672,7 @@
           if (badge) badge.textContent = String(val);
         } else if (action === 'edit-student-name') {
           appState.studentName = el.value;
-          localStorage.setItem('aulalive_student_name', el.value);
+          sessionStorage.setItem('aulalive_student_name', el.value);
         } else if (el.dataset.draftKey && el.dataset.wordIndex !== undefined) {
           const key = el.dataset.draftKey;
           const idx = Number(el.dataset.wordIndex);
