@@ -1,0 +1,3948 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AulaLive CPIA — Presentazioni Interattive per la Didattica</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- PeerJS WebRTC P2P (caricato con defer per non bloccare mai il rendering) -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js" defer></script>
+  <!-- Font caldi e rotondi con fallback di sistema sicuri anche offline -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['DM Sans', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+            display: ['Outfit', 'system-ui', '-apple-system', 'sans-serif'],
+          },
+          colors: {
+            cream: '#FAF7F2',
+            coral: {
+              50: '#FFF1EE',
+              100: '#FFE0D9',
+              500: '#FF5A36',
+              600: '#E84522',
+              700: '#C43415'
+            }
+          },
+          boxShadow: {
+            'soft': '0 12px 32px -6px rgba(30, 41, 59, 0.08)',
+            'card': '0 4px 16px -2px rgba(30, 41, 59, 0.06)',
+            'tactile': '0 4px 0 0 rgba(15, 23, 42, 0.14)',
+            'phone': '0 28px 65px -12px rgba(15, 23, 42, 0.42)',
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #FAF7F2;
+      color: #1E293B;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+    }
+    h1, h2, h3, h4, .font-display {
+      font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+    }
+
+    /* Trama leggera a puntini stile quaderno moderno */
+    .bg-notebook {
+      background-color: #FAF7F2;
+      background-image: radial-gradient(#CBD5E1 1.15px, transparent 1.15px);
+      background-size: 22px 22px;
+    }
+
+    /* Pulsanti tattili con effetto pressione fisica */
+    .btn-tactile {
+      transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.12s ease, background-color 0.15s ease;
+      box-shadow: 0 3px 0 0 rgba(15, 23, 42, 0.16);
+    }
+    .btn-tactile:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 0 0 rgba(15, 23, 42, 0.18);
+    }
+    .btn-tactile:active:not(:disabled) {
+      transform: translateY(2px);
+      box-shadow: 0 1px 0 0 rgba(15, 23, 42, 0.16);
+    }
+
+    @keyframes popIn {
+      0% { opacity: 0; transform: scale(0.92) translateY(8px); }
+      70% { opacity: 1; transform: scale(1.01) translateY(-1px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .animate-pop-in {
+      animation: popIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    @keyframes floatReaction {
+      0% {
+        opacity: 0;
+        transform: translateY(16px) translateX(0px) scale(0.65);
+      }
+      15% {
+        opacity: 1;
+        transform: translateY(-28px) translateX(var(--sway-1, 14px)) scale(1.15);
+      }
+      55% {
+        opacity: 0.95;
+        transform: translateY(-175px) translateX(var(--sway-2, -16px)) scale(1.05);
+      }
+      85% {
+        opacity: 0.45;
+        transform: translateY(-305px) translateX(var(--sway-3, 10px)) scale(0.95);
+      }
+      100% {
+        opacity: 0;
+        transform: translateY(-385px) translateX(0px) scale(0.8);
+      }
+    }
+    .floating-emoji {
+      position: fixed;
+      bottom: 84px;
+      pointer-events: none;
+      z-index: 9999;
+      font-size: 2.35rem;
+      filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.18));
+      animation: floatReaction 2.8s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+    }
+
+    @keyframes confettiFall {
+      0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(420px) rotate(540deg); opacity: 0; }
+    }
+    .confetti-piece {
+      position: absolute;
+      top: 0;
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+      pointer-events: none;
+      animation: confettiFall 2.8s ease-out forwards;
+    }
+
+    /* Scrollbar discreta */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.45);
+      border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(100, 116, 139, 0.7);
+    }
+
+    /* Range slider accessibile per Scale di Valutazione */
+    input[type="range"].aula-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 14px;
+      border-radius: 999px;
+      background: #E2E8F0;
+      outline: none;
+      transition: background 0.2s;
+    }
+    input[type="range"].aula-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #FF5A36;
+      border: 4px solid #FFFFFF;
+      box-shadow: 0 4px 12px rgba(255, 90, 54, 0.45);
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+    input[type="range"].aula-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.14);
+    }
+    input[type="range"].aula-slider::-moz-range-thumb {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #FF5A36;
+      border: 4px solid #FFFFFF;
+      box-shadow: 0 4px 12px rgba(255, 90, 54, 0.45);
+      cursor: pointer;
+    }
+
+    /* Transizioni fluide per le parole della Nuvola */
+    .wc-word {
+      transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s ease;
+      user-select: none;
+      cursor: default;
+    }
+    .wc-word:hover {
+      transform: scale(1.09) !important;
+      z-index: 20 !important;
+    }
+  </style>
+</head>
+<body class="bg-notebook text-slate-800 antialiased selection:bg-orange-200 selection:text-slate-900">
+  <!-- Contenitore Principale Applicazione -->
+  <div id="app" class="min-h-screen w-full flex flex-col"></div>
+
+  <!-- Contenitore Toast / Notifiche Non-Bloccanti -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-[10000] flex flex-col gap-2.5 pointer-events-none max-w-sm"></div>
+
+  <!-- Contenitore Modali (QR Code, Conferme, Spotlight Post-it) -->
+  <div id="modal-container" class="fixed inset-0 z-[9500] hidden items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4"></div>
+
+  <!-- Input nascosto per caricamento file lezione (.json) -->
+  <input type="file" id="import-lesson-file" accept=".json,application/json" class="hidden" />
+
+  <script>
+    (function () {
+      'use strict';
+
+      // =========================================================================
+      // 1. COSTANTI, PALETTE COLORI, TEMI E TIPOLOGIE DI SLIDE
+      // =========================================================================
+      const STORAGE_KEY = 'aulalive_cpia_v1';
+      const CHANNEL_NAME = 'aulalive_cpia_sync';
+
+      const CHART_PALETTE = [
+        '#FF5A36', // Corallo vivo
+        '#2563EB', // Blu cobalto
+        '#10B981', // Verde smeraldo
+        '#F59E0B', // Ambra / Giallo sole
+        '#06B6D4', // Turchese
+        '#EC4899', // Magenta caldo
+        '#8B5CF6', // Lavanda intenso
+        '#14B8A6'  // Verde acqua
+      ];
+
+      const SLIDE_TYPES = {
+        wordcloud: {
+          id: 'wordcloud',
+          label: 'Nuvola di Parole',
+          shortLabel: 'Nuvola',
+          badgeBg: 'bg-orange-100 text-orange-800 border-orange-200',
+          accent: '#FF5A36',
+          desc: 'Gli studenti inviano 1-3 parole che appaiono in tempo reale.'
+        },
+        multiple_choice: {
+          id: 'multiple_choice',
+          label: 'Scelta Multipla',
+          shortLabel: 'Sondaggio',
+          badgeBg: 'bg-blue-100 text-blue-800 border-blue-200',
+          accent: '#2563EB',
+          desc: 'Sondaggio rapido con grafico a barre, ciambella o torta.'
+        },
+        scales: {
+          id: 'scales',
+          label: 'Scale di Valutazione',
+          shortLabel: 'Scale 1-5',
+          badgeBg: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+          accent: '#10B981',
+          desc: 'Valutazione da 1 a 5 su una o più affermazioni.'
+        },
+        ranking: {
+          id: 'ranking',
+          label: 'Classifica Priorità',
+          shortLabel: 'Classifica',
+          badgeBg: 'bg-amber-100 text-amber-900 border-amber-200',
+          accent: '#F59E0B',
+          desc: 'Gli studenti ordinano gli elementi dal 1° all’ultimo posto.'
+        },
+        open_ended: {
+          id: 'open_ended',
+          label: 'Domande Aperte',
+          shortLabel: 'Post-it',
+          badgeBg: 'bg-cyan-100 text-cyan-800 border-cyan-200',
+          accent: '#06B6D4',
+          desc: 'Bacheca di bigliettini colorati ingrandibili sulla LIM.'
+        },
+        quiz: {
+          id: 'quiz',
+          label: 'Quiz Competitivo',
+          shortLabel: 'Quiz',
+          badgeBg: 'bg-rose-100 text-rose-800 border-rose-200',
+          accent: '#E11D48',
+          desc: 'Domanda a tempo con risposta corretta e punti velocità.'
+        },
+        leaderboard: {
+          id: 'leaderboard',
+          label: 'Podio Classifica',
+          shortLabel: 'Podio',
+          badgeBg: 'bg-yellow-100 text-yellow-900 border-yellow-300',
+          accent: '#EAB308',
+          desc: 'Podio olimpico Top 5 con i punti accumulati nei Quiz.'
+        }
+      };
+
+      const THEMES = {
+        cream: {
+          id: 'cream',
+          name: 'Carta Crema',
+          stageBg: 'bg-[#FAF7F2] bg-notebook',
+          cardBg: 'bg-white border-slate-200/90 shadow-soft',
+          textPrimary: 'text-slate-900',
+          textSecondary: 'text-slate-600',
+          pillBg: 'bg-white border-slate-200 text-slate-700',
+          barTrack: 'bg-slate-100',
+          isDark: false
+        },
+        slate_dark: {
+          id: 'slate_dark',
+          name: 'Lavagna Ardesia',
+          stageBg: 'bg-slate-900',
+          cardBg: 'bg-slate-800/95 border-slate-700 shadow-2xl',
+          textPrimary: 'text-white',
+          textSecondary: 'text-slate-300',
+          pillBg: 'bg-slate-800 border-slate-700 text-slate-200',
+          barTrack: 'bg-slate-700/80',
+          isDark: true
+        },
+        sky_sun: {
+          id: 'sky_sun',
+          name: 'Cielo & Sole',
+          stageBg: 'bg-gradient-to-br from-sky-50 via-amber-50/70 to-orange-50',
+          cardBg: 'bg-white/95 border-sky-200/80 shadow-soft',
+          textPrimary: 'text-slate-900',
+          textSecondary: 'text-slate-600',
+          pillBg: 'bg-white/90 border-sky-200 text-sky-900',
+          barTrack: 'bg-sky-100/80',
+          isDark: false
+        },
+        mint: {
+          id: 'mint',
+          name: 'Menta Fresca',
+          stageBg: 'bg-gradient-to-br from-emerald-50 via-teal-50/60 to-amber-50/40',
+          cardBg: 'bg-white/95 border-emerald-200/80 shadow-soft',
+          textPrimary: 'text-slate-900',
+          textSecondary: 'text-slate-600',
+          pillBg: 'bg-white/90 border-emerald-200 text-emerald-900',
+          barTrack: 'bg-emerald-100/70',
+          isDark: false
+        }
+      };
+
+      const SIMULATED_STUDENTS = [
+        { id: 'sim_marco', name: 'Marco R.' },
+        { id: 'sim_giulia', name: 'Giulia B.' },
+        { id: 'sim_luca', name: 'Luca T.' },
+        { id: 'sim_sofia', name: 'Sofia M.' },
+        { id: 'sim_elena', name: 'Elena V.' }
+      ];
+
+      const REACTION_EMOJIS = ['❤️', '👍', '👏', '💡', '❓'];
+
+      // =========================================================================
+      // 2. ICONE SVG INLINE E FUNZIONI DI UTILITÀ
+      // =========================================================================
+      function getIcon(name, cls = 'w-5 h-5') {
+        const icons = {
+          logo: `<svg class="${cls}" viewBox="0 0 36 36" fill="none"><rect width="36" height="36" rx="11" fill="#FF5A36"/><rect x="2" y="2" width="32" height="32" rx="9" stroke="white" stroke-opacity="0.25" stroke-width="1.5"/><path d="M9.5 24.5L14.5 12L19.5 24.5M11.3 20.5H17.7" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="26.5" cy="13.5" r="3" fill="#FACC15"/><path d="M26.5 19V24.5" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>`,
+          wordcloud: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>`,
+          multiple_choice: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>`,
+          scales: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="2" y1="14" x2="6" y2="14"/><line x1="10" y1="8" x2="14" y2="8"/><line x1="18" y1="16" x2="22" y2="16"/></svg>`,
+          ranking: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg>`,
+          open_ended: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
+          quiz: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
+          leaderboard: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>`,
+          play: `<svg class="${cls}" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>`,
+          plus: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
+          trash: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`,
+          copy: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`,
+          phone: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>`,
+          qr: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>`,
+          download: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`,
+          upload: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>`,
+          fullscreen: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>`,
+          arrowLeft: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>`,
+          arrowRight: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`,
+          check: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+          sparkles: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>`,
+          users: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+          qa: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>`
+        };
+        return icons[name] || '';
+      }
+
+      function escapeHTML(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function uid(prefix = 'id') {
+        return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+      }
+
+      function generateRoomCode(existingRooms = {}) {
+        let code;
+        let attempts = 0;
+        do {
+          code = String(Math.floor(100000 + Math.random() * 900000));
+          attempts++;
+        } while (existingRooms[code] && attempts < 50);
+        return code;
+      }
+
+      function showToast(message, type = 'info') {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+        const colors = {
+          info: 'bg-slate-900 text-white border-slate-700',
+          success: 'bg-emerald-600 text-white border-emerald-500',
+          warning: 'bg-amber-500 text-slate-950 border-amber-400',
+          error: 'bg-rose-600 text-white border-rose-500'
+        };
+        const toast = document.createElement('div');
+        toast.className = `pointer-events-auto px-4 py-3 rounded-2xl border shadow-lg text-sm font-semibold flex items-center gap-2.5 animate-pop-in ${colors[type] || colors.info}`;
+        toast.innerHTML = `<span>${escapeHTML(message)}</span>`;
+        container.appendChild(toast);
+        setTimeout(() => {
+          toast.style.opacity = '0';
+          toast.style.transform = 'translateY(6px)';
+          toast.style.transition = 'all 0.25s ease';
+          setTimeout(() => toast.remove(), 260);
+        }, 3000);
+      }
+
+      function spawnFloatingReaction(emoji) {
+        if (!emoji) return;
+        const el = document.createElement('div');
+        el.className = 'floating-emoji';
+        el.textContent = emoji;
+        const leftPercent = 12 + Math.random() * 76;
+        el.style.left = `${leftPercent}vw`;
+        el.style.setProperty('--sway-1', `${(Math.random() - 0.5) * 44}px`);
+        el.style.setProperty('--sway-2', `${(Math.random() - 0.5) * 56}px`);
+        el.style.setProperty('--sway-3', `${(Math.random() - 0.5) * 36}px`);
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 2900);
+      }
+
+      // Generatore QR Code SVG deterministico locale (zero dipendenze esterne)
+      function generateLocalQRSVG(text, size = 210) {
+        const modules = 25;
+        let hash = 2166136261;
+        for (let i = 0; i < text.length; i++) {
+          hash ^= text.charCodeAt(i);
+          hash = Math.imul(hash, 16777619);
+        }
+        const grid = Array.from({ length: modules }, () => Array(modules).fill(false));
+
+        function drawFinder(r0, c0) {
+          for (let r = -1; r <= 7; r++) {
+            for (let c = -1; c <= 7; c++) {
+              const rr = r0 + r;
+              const cc = c0 + c;
+              if (rr < 0 || rr >= modules || cc < 0 || cc >= modules) continue;
+              if (r === -1 || r === 7 || c === -1 || c === 7) {
+                grid[rr][cc] = false;
+              } else if (r === 0 || r === 6 || c === 0 || c === 6 || (r >= 2 && r <= 4 && c >= 2 && c <= 4)) {
+                grid[rr][cc] = true;
+              } else {
+                grid[rr][cc] = false;
+              }
+            }
+          }
+        }
+        drawFinder(0, 0);
+        drawFinder(0, modules - 7);
+        drawFinder(modules - 7, 0);
+
+        let seed = Math.abs(hash) || 1234567;
+        for (let r = 0; r < modules; r++) {
+          for (let c = 0; c < modules; c++) {
+            const inTopLeft = r < 8 && c < 8;
+            const inTopRight = r < 8 && c >= modules - 8;
+            const inBottomLeft = r >= modules - 8 && c < 8;
+            if (inTopLeft || inTopRight || inBottomLeft) continue;
+            seed = (seed * 1664525 + 1013904223) % 4294967296;
+            const charBit = text.charCodeAt((r * modules + c) % text.length) & (1 << ((r + c) % 7));
+            grid[r][c] = ((seed >>> 24) & 1) === 1 || Boolean(charBit);
+          }
+        }
+
+        const cell = size / (modules + 2);
+        let rects = '';
+        for (let r = 0; r < modules; r++) {
+          for (let c = 0; c < modules; c++) {
+            if (grid[r][c]) {
+              const x = ((c + 1) * cell).toFixed(2);
+              const y = ((r + 1) * cell).toFixed(2);
+              const s = (cell * 0.96).toFixed(2);
+              rects += `<rect x="${x}" y="${y}" width="${s}" height="${s}" rx="${(cell * 0.22).toFixed(2)}" fill="#0F172A"/>`;
+            }
+          }
+        }
+        return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" class="mx-auto rounded-2xl bg-white p-2 border-2 border-slate-200">${rects}</svg>`;
+      }
+
+      // =========================================================================
+      // 3. DATI INIZIALI E MODELLI PRONTI PER IL CPIA
+      // =========================================================================
+      function createSlideTemplate(type) {
+        const id = uid('sl');
+        switch (type) {
+          case 'wordcloud':
+            return {
+              id,
+              type: 'wordcloud',
+              question: 'Quale parola descrive il tuo obiettivo di studio oggi?',
+              subtitle: 'Scrivi da 1 a 3 parole brevi e invia',
+              maxWords: 3,
+              responses: {}
+            };
+          case 'multiple_choice':
+            return {
+              id,
+              type: 'multiple_choice',
+              question: 'Quale attività preferisci fare in classe?',
+              subtitle: 'Scegli una risposta dal tuo smartphone',
+              chartType: 'bar',
+              options: [
+                { id: uid('opt'), text: 'Conversazione e dialoghi reali' },
+                { id: uid('opt'), text: 'Giochi e quiz interattivi' },
+                { id: uid('opt'), text: 'Lettura e comprensione di notizie' },
+                { id: uid('opt'), text: 'Lavoro di gruppo con i compagni' }
+              ],
+              responses: {}
+            };
+          case 'scales':
+            return {
+              id,
+              type: 'scales',
+              question: 'Come ti senti rispetto agli argomenti di questa settimana?',
+              subtitle: 'Sposta il cursore da 1 (Per niente) a 5 (Moltissimo)',
+              minLabel: '1 • Ho bisogno di aiuto',
+              maxLabel: '5 • Mi sento sicuro/a',
+              statements: [
+                { id: uid('st'), text: 'Capisco le spiegazioni dell’insegnante' },
+                { id: uid('st'), text: 'Riesco a partecipare alle attività in gruppo' },
+                { id: uid('st'), text: 'Mi sento a mio agio a fare domande in aula' }
+              ],
+              responses: {}
+            };
+          case 'ranking':
+            return {
+              id,
+              type: 'ranking',
+              question: 'Metti in ordine di importanza queste competenze per te:',
+              subtitle: 'Usa le frecce ▲ ▼ per portare in alto la tua priorità n. 1',
+              items: [
+                { id: uid('rk'), text: 'Parlare con sicurezza al lavoro e negli uffici' },
+                { id: uid('rk'), text: 'Scrivere messaggi, email e documenti chiari' },
+                { id: uid('rk'), text: 'Usare il computer e lo smartphone con autonomia' },
+                { id: uid('rk'), text: 'Superare l’esame finale con un buon risultato' }
+              ],
+              responses: {}
+            };
+          case 'open_ended':
+            return {
+              id,
+              type: 'open_ended',
+              question: 'C’è un argomento che vorresti approfondire nelle prossime lezioni?',
+              subtitle: 'Scrivi un breve messaggio (rimarrà anonimo sulla LIM)',
+              responses: {}
+            };
+          case 'quiz': {
+            const o1 = uid('qopt');
+            const o2 = uid('qopt');
+            const o3 = uid('qopt');
+            const o4 = uid('qopt');
+            return {
+              id,
+              type: 'quiz',
+              question: 'Quale documento serve per prenotare una visita medica dal medico di base?',
+              subtitle: 'Rispondi velocemente per guadagnare più punti!',
+              duration: 25,
+              status: 'waiting', // 'waiting' | 'running' | 'paused' | 'ended'
+              timeLeft: 25,
+              options: [
+                { id: o1, text: 'La ricetta (impegnativa) e la tessera sanitaria', isCorrect: true },
+                { id: o2, text: 'Solo la patente di guida', isCorrect: false },
+                { id: o3, text: 'Il biglietto dell’autobus', isCorrect: false },
+                { id: o4, text: 'La tessera della biblioteca', isCorrect: false }
+              ],
+              responses: {}
+            };
+          }
+          case 'leaderboard':
+            return {
+              id,
+              type: 'leaderboard',
+              question: 'Podio della Classe — Campioni del Quiz!',
+              subtitle: 'Classifica aggiornata con i punti di tutti i quiz della lezione'
+            };
+          default:
+            return createSlideTemplate('multiple_choice');
+        }
+      }
+
+      function buildDemoRoom() {
+        const s1 = createSlideTemplate('wordcloud');
+        s1.question = 'Da quale città o Paese vieni? Oppure una parola che ami!';
+        s1.subtitle = 'Invia 1 o 2 parole per costruire insieme la nuvola della classe';
+        s1.responses = {
+          sim_marco: ['Italia', 'Musica', 'Lavoro'],
+          sim_giulia: ['Marocco', 'Famiglia', 'Italia'],
+          sim_luca: ['Romania', 'Futuro', 'Studio'],
+          sim_sofia: ['Perù', 'Amicizia', 'Italia'],
+          sim_elena: ['Ucraina', 'Futuro', 'Lingua']
+        };
+
+        const s2 = createSlideTemplate('multiple_choice');
+        s2.question = 'In quale fascia oraria riesci a studiare meglio?';
+        s2.responses = {
+          sim_marco: s2.options[0].id,
+          sim_giulia: s2.options[1].id,
+          sim_luca: s2.options[0].id,
+          sim_sofia: s2.options[3].id,
+          sim_elena: s2.options[1].id
+        };
+
+        const s3 = createSlideTemplate('scales');
+        s3.responses = {
+          sim_marco: { [s3.statements[0].id]: 5, [s3.statements[1].id]: 4, [s3.statements[2].id]: 5 },
+          sim_giulia: { [s3.statements[0].id]: 4, [s3.statements[1].id]: 5, [s3.statements[2].id]: 4 },
+          sim_luca: { [s3.statements[0].id]: 4, [s3.statements[1].id]: 4, [s3.statements[2].id]: 3 }
+        };
+
+        const s4 = createSlideTemplate('ranking');
+        const ids = s4.items.map(i => i.id);
+        s4.responses = {
+          sim_marco: [ids[0], ids[2], ids[1], ids[3]],
+          sim_giulia: [ids[0], ids[1], ids[3], ids[2]],
+          sim_sofia: [ids[2], ids[0], ids[1], ids[3]]
+        };
+
+        const s5 = createSlideTemplate('open_ended');
+        s5.responses = {
+          sim_marco: { text: 'Vorrei esercitarmi a scrivere un curriculum vitae in italiano.', author: 'Marco R.', ts: Date.now() - 40000 },
+          sim_giulia: { text: 'Mi piacerebbe fare simulazioni di colloqui di lavoro!', author: 'Giulia B.', ts: Date.now() - 25000 },
+          sim_elena: { text: 'Più esercizi di ascolto e comprensione di notizie.', author: 'Elena V.', ts: Date.now() - 10000 }
+        };
+
+        const s6 = createSlideTemplate('quiz');
+        const correctId = s6.options[0].id;
+        const wrongId = s6.options[1].id;
+        s6.responses = {
+          sim_marco: { optionId: correctId, isCorrect: true, points: 920, name: 'Marco R.' },
+          sim_giulia: { optionId: correctId, isCorrect: true, points: 860, name: 'Giulia B.' },
+          sim_luca: { optionId: wrongId, isCorrect: false, points: 0, name: 'Luca T.' },
+          sim_sofia: { optionId: correctId, isCorrect: true, points: 790, name: 'Sofia M.' }
+        };
+
+        const s7 = createSlideTemplate('leaderboard');
+
+        return {
+          code: '482910',
+          title: 'Benvenuti al CPIA! Conosciamoci insieme',
+          theme: 'cream',
+          activeSlideIndex: 0,
+          slides: [s1, s2, s3, s4, s5, s6, s7],
+          qa: [
+            {
+              id: uid('qa'),
+              text: 'Quando iniziano gli esami di certificazione linguistica?',
+              author: 'Giulia B.',
+              upvotes: 4,
+              upvotedBy: ['sim_marco', 'sim_luca', 'sim_sofia', 'sim_elena'],
+              answered: false,
+              ts: Date.now() - 60000
+            }
+          ],
+          updatedAt: Date.now()
+        };
+      }
+
+      function buildTemplateRoom(templateKey, existingRooms) {
+        const code = generateRoomCode(existingRooms);
+        if (templateKey === 'accoglienza') {
+          const s1 = createSlideTemplate('wordcloud');
+          s1.question = 'Una parola per descrivere come ti senti oggi in classe';
+          const s2 = createSlideTemplate('multiple_choice');
+          s2.question = 'Come preferisci lavorare durante la lezione?';
+          s2.options = [
+            { id: uid('opt'), text: 'A coppie con un compagno' },
+            { id: uid('opt'), text: 'In piccoli gruppi da 3-4 persone' },
+            { id: uid('opt'), text: 'Tutta la classe insieme alla LIM' },
+            { id: uid('opt'), text: 'Individualmente con il supporto del docente' }
+          ];
+          const s3 = createSlideTemplate('open_ended');
+          s3.question = 'Raccontaci una tua passione o un tuo talento nascosto!';
+          return {
+            code,
+            title: 'Accoglienza e Conoscenza Classe',
+            theme: 'cream',
+            activeSlideIndex: 0,
+            slides: [s1, s2, s3],
+            qa: [],
+            updatedAt: Date.now()
+          };
+        }
+
+        if (templateKey === 'ripasso') {
+          const s1 = createSlideTemplate('quiz');
+          s1.question = 'Domanda 1: Quale articolo determinativo si usa davanti a "studenti"?';
+          s1.options = [
+            { id: uid('qopt'), text: 'Gli (gli studenti)', isCorrect: true },
+            { id: uid('qopt'), text: 'I (i studenti)', isCorrect: false },
+            { id: uid('qopt'), text: 'Le (le studenti)', isCorrect: false },
+            { id: uid('qopt'), text: 'Lo (lo studenti)', isCorrect: false }
+          ];
+          const s2 = createSlideTemplate('quiz');
+          s2.question = 'Domanda 2: Quale frase è scritta in modo corretto?';
+          s2.options = [
+            { id: uid('qopt'), text: 'Ieri sono andato a scuola in autobus.', isCorrect: true },
+            { id: uid('qopt'), text: 'Ieri ho andato a scuola in autobus.', isCorrect: false },
+            { id: uid('qopt'), text: 'Ieri sono andato a scuola nel autobus.', isCorrect: false },
+            { id: uid('qopt'), text: 'Ieri andavo a scuola domani.', isCorrect: false }
+          ];
+          const s3 = createSlideTemplate('leaderboard');
+          return {
+            code,
+            title: 'Ripasso e Verifica Formativa',
+            theme: 'sky_sun',
+            activeSlideIndex: 0,
+            slides: [s1, s2, s3],
+            qa: [],
+            updatedAt: Date.now()
+          };
+        }
+
+        // Template: feedback
+        const s1 = createSlideTemplate('scales');
+        s1.question = 'Autovalutazione di fine modulo: quanto ti senti soddisfatto?';
+        const s2 = createSlideTemplate('wordcloud');
+        s2.question = 'Qual è la cosa più utile che hai imparato in questo modulo?';
+        const s3 = createSlideTemplate('open_ended');
+        s3.question = 'Consigli o richieste per il prossimo modulo didattico:';
+        return {
+          code,
+          title: 'Autovalutazione e Feedback di Fine Modulo',
+          theme: 'mint',
+          activeSlideIndex: 0,
+          slides: [s1, s2, s3],
+          qa: [],
+          updatedAt: Date.now()
+        };
+      }
+
+      // =========================================================================
+      // 4. MOTORE DI SINCRONIZZAZIONE P2P (WebRTC PeerJS) + ARCHIVIO LOCALE
+      // =========================================================================
+      const PEER_PREFIX = 'aulalive-cpia-';
+      const PEER_CONFIG = {
+        debug: 0,
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' }
+          ]
+        }
+      };
+
+      class SyncEngine {
+        constructor(store) {
+          this.store = store;
+          this.peer = null;
+          this.role = null; // 'host' | 'client' | null
+          this.roomCode = null;
+          this.status = 'idle'; // 'idle' | 'connecting' | 'online' | 'local_only' | 'error'
+          this.connections = new Map(); // host -> student connections
+          this.hostConn = null; // client -> host connection
+          this.retryTimer = null;
+        }
+
+        getConnectedCount() {
+          let count = 0;
+          this.connections.forEach(conn => {
+            if (conn && conn.open) count++;
+          });
+          return count;
+        }
+
+        stop() {
+          if (this.retryTimer) {
+            clearTimeout(this.retryTimer);
+            this.retryTimer = null;
+          }
+          this.connections.forEach(conn => {
+            try { conn.close(); } catch (_) {}
+          });
+          this.connections.clear();
+          if (this.hostConn) {
+            try { this.hostConn.close(); } catch (_) {}
+            this.hostConn = null;
+          }
+          if (this.peer) {
+            try { this.peer.destroy(); } catch (_) {}
+            this.peer = null;
+          }
+          this.role = null;
+          this.roomCode = null;
+          this.status = 'idle';
+        }
+
+        startHost(code) {
+          if (!code) return;
+          if (this.role === 'host' && this.roomCode === code && this.peer && !this.peer.destroyed) {
+            return;
+          }
+          this.stop();
+          this.role = 'host';
+          this.roomCode = code;
+
+          if (typeof window.Peer === 'undefined') {
+            this.status = 'local_only';
+            this.store.emit();
+            return;
+          }
+
+          this.status = 'connecting';
+          this.store.emit();
+
+          try {
+            const peerId = `${PEER_PREFIX}${code}`;
+            const peer = new window.Peer(peerId, PEER_CONFIG);
+            this.peer = peer;
+
+            peer.on('open', () => {
+              this.status = 'online';
+              this.store.emit();
+            });
+
+            peer.on('connection', (conn) => {
+              this.connections.set(conn.peer, conn);
+              conn.on('open', () => {
+                const room = this.store.getRoom(code);
+                if (room) {
+                  try {
+                    conn.send({ type: 'ROOM_STATE', room });
+                  } catch (_) {}
+                }
+                this.store.emit();
+              });
+
+              conn.on('data', (msg) => {
+                this.handleHostMessage(msg, conn);
+              });
+
+              conn.on('close', () => {
+                this.connections.delete(conn.peer);
+                this.store.emit();
+              });
+
+              conn.on('error', () => {
+                this.connections.delete(conn.peer);
+                this.store.emit();
+              });
+            });
+
+            peer.on('error', (err) => {
+              if (err && err.type === 'unavailable-id') {
+                // Un'altra scheda sta già ospitando questa aula su questo PC
+                this.status = 'local_only';
+              } else {
+                this.status = 'local_only';
+              }
+              this.store.emit();
+            });
+          } catch (_) {
+            this.status = 'local_only';
+            this.store.emit();
+          }
+        }
+
+        broadcastState(room) {
+          if (this.role !== 'host' || !room || room.code !== this.roomCode) return;
+          this.connections.forEach(conn => {
+            if (conn && conn.open) {
+              try {
+                conn.send({ type: 'ROOM_STATE', room });
+              } catch (_) {}
+            }
+          });
+        }
+
+        handleHostMessage(msg, conn) {
+          if (!msg || typeof msg !== 'object') return;
+          const code = this.roomCode;
+          if (!code) return;
+
+          if (msg.type === 'REQUEST_STATE') {
+            const room = this.store.getRoom(code);
+            if (room && conn && conn.open) {
+              try { conn.send({ type: 'ROOM_STATE', room }); } catch (_) {}
+            }
+            return;
+          }
+
+          if (msg.type === 'SUBMIT_VOTE') {
+            this.store.submitVote(code, msg.slideId, msg.participantId, msg.payload, false);
+          } else if (msg.type === 'SUBMIT_QA') {
+            this.store.addQuestion(code, msg.text, msg.author, false);
+          } else if (msg.type === 'UPVOTE_QA') {
+            this.store.toggleUpvoteQuestion(code, msg.qaId, msg.participantId, false);
+          } else if (msg.type === 'REACTION') {
+            spawnFloatingReaction(msg.emoji);
+            this.store.bcPost({ type: 'REACTION', code, emoji: msg.emoji });
+          }
+        }
+
+        connectClient(code) {
+          if (!code) return;
+          if (this.role === 'client' && this.roomCode === code && this.hostConn && this.hostConn.open) {
+            return;
+          }
+          this.stop();
+          this.role = 'client';
+          this.roomCode = code;
+
+          // Se la stanza esiste già in localStorage (stesso browser/PC), caricala subito
+          const localRoom = this.store.getRoom(code);
+          if (localRoom) {
+            this.store.remoteRooms[code] = localRoom;
+          }
+
+          if (typeof window.Peer === 'undefined') {
+            this.status = localRoom ? 'online' : 'error';
+            this.store.emit();
+            return;
+          }
+
+          this.status = 'connecting';
+          this.store.emit();
+
+          try {
+            const peer = new window.Peer(PEER_CONFIG);
+            this.peer = peer;
+
+            peer.on('open', () => {
+              const conn = peer.connect(`${PEER_PREFIX}${code}`, { reliable: true });
+              this.hostConn = conn;
+
+              conn.on('open', () => {
+                this.status = 'online';
+                try { conn.send({ type: 'REQUEST_STATE' }); } catch (_) {}
+                this.store.emit();
+              });
+
+              conn.on('data', (msg) => {
+                if (msg && msg.type === 'ROOM_STATE' && msg.room) {
+                  this.store.remoteRooms[code] = msg.room;
+                  this.status = 'online';
+                  this.store.emit();
+                }
+              });
+
+              conn.on('close', () => {
+                this.status = 'error';
+                this.store.emit();
+              });
+
+              conn.on('error', () => {
+                this.status = 'error';
+                this.store.emit();
+              });
+            });
+
+            peer.on('error', () => {
+              this.status = this.store.getRoom(code) ? 'online' : 'error';
+              this.store.emit();
+            });
+          } catch (_) {
+            this.status = this.store.getRoom(code) ? 'online' : 'error';
+            this.store.emit();
+          }
+        }
+
+        sendToHost(payload) {
+          if (this.role === 'client' && this.hostConn && this.hostConn.open) {
+            try {
+              this.hostConn.send(payload);
+              return true;
+            } catch (_) {
+              return false;
+            }
+          }
+          return false;
+        }
+      }
+
+      // =========================================================================
+      // 5. STORE CENTRALE STATO APPLICAZIONE (AulaStore)
+      // =========================================================================
+      class AulaStore {
+        constructor() {
+          this.rooms = {};
+          this.remoteRooms = {};
+          this.listeners = new Set();
+          this.bc = null;
+          this.sync = new SyncEngine(this);
+          this.loadFromStorage();
+          this.initBroadcastChannel();
+        }
+
+        loadFromStorage() {
+          try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+                this.rooms = parsed;
+                return;
+              }
+            }
+          } catch (_) {}
+          const demo = buildDemoRoom();
+          this.rooms = { [demo.code]: demo };
+          this.saveToStorage(false);
+        }
+
+        saveToStorage(broadcast = true) {
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(this.rooms));
+          } catch (_) {}
+          if (broadcast) {
+            this.bcPost({ type: 'SYNC_ALL', rooms: this.rooms });
+          }
+        }
+
+        initBroadcastChannel() {
+          try {
+            if ('BroadcastChannel' in window) {
+              this.bc = new BroadcastChannel(CHANNEL_NAME);
+              this.bc.onmessage = (ev) => {
+                const data = ev.data;
+                if (!data) return;
+                if (data.type === 'SYNC_ALL' && data.rooms) {
+                  this.rooms = data.rooms;
+                  this.emit();
+                } else if (data.type === 'REACTION') {
+                  if (appState.roomCode === data.code) {
+                    spawnFloatingReaction(data.emoji);
+                  }
+                }
+              };
+            }
+          } catch (_) {}
+
+          window.addEventListener('storage', (ev) => {
+            if (ev.key === STORAGE_KEY && ev.newValue) {
+              try {
+                this.rooms = JSON.parse(ev.newValue);
+                this.emit();
+              } catch (_) {}
+            }
+          });
+        }
+
+        bcPost(msg) {
+          if (this.bc) {
+            try { this.bc.postMessage(msg); } catch (_) {}
+          }
+        }
+
+        subscribe(fn) {
+          this.listeners.add(fn);
+          return () => this.listeners.delete(fn);
+        }
+
+        emit() {
+          this.listeners.forEach(fn => {
+            try { fn(); } catch (err) { console.error(err); }
+          });
+        }
+
+        getRoom(code) {
+          if (!code) return null;
+          return this.rooms[code] || this.remoteRooms[code] || null;
+        }
+
+        createRoom(title = 'Nuova Lezione Interattiva') {
+          const code = generateRoomCode(this.rooms);
+          const s1 = createSlideTemplate('multiple_choice');
+          const room = {
+            code,
+            title: title.trim() || 'Nuova Lezione Interattiva',
+            theme: 'cream',
+            activeSlideIndex: 0,
+            slides: [s1],
+            qa: [],
+            updatedAt: Date.now()
+          };
+          this.rooms[code] = room;
+          this.saveToStorage();
+          this.emit();
+          return room;
+        }
+
+        createFromTemplate(templateKey) {
+          const room = buildTemplateRoom(templateKey, this.rooms);
+          this.rooms[room.code] = room;
+          this.saveToStorage();
+          this.emit();
+          return room;
+        }
+
+        deleteRoom(code) {
+          if (!this.rooms[code]) return;
+          delete this.rooms[code];
+          if (Object.keys(this.rooms).length === 0) {
+            const demo = buildDemoRoom();
+            this.rooms[demo.code] = demo;
+          }
+          this.saveToStorage();
+          this.emit();
+        }
+
+        updateRoom(code, updaterFn) {
+          const room = this.rooms[code];
+          if (!room) return;
+          updaterFn(room);
+          room.updatedAt = Date.now();
+          this.saveToStorage();
+          this.sync.broadcastState(room);
+          this.emit();
+        }
+
+        submitVote(code, slideId, participantId, payload, forwardIfClient = true) {
+          if (forwardIfClient && this.sync.role === 'client') {
+            this.sync.sendToHost({
+              type: 'SUBMIT_VOTE',
+              slideId,
+              participantId,
+              payload
+            });
+            // Aggiornamento ottimistico locale
+            const rRoom = this.remoteRooms[code];
+            if (rRoom) {
+              const sl = rRoom.slides.find(s => s.id === slideId);
+              if (sl) {
+                if (!sl.responses) sl.responses = {};
+                sl.responses[participantId] = payload;
+                this.emit();
+              }
+            }
+            return;
+          }
+
+          this.updateRoom(code, (room) => {
+            const slide = room.slides.find(s => s.id === slideId);
+            if (!slide) return;
+            if (!slide.responses) slide.responses = {};
+            slide.responses[participantId] = payload;
+          });
+        }
+
+        addQuestion(code, text, author = 'Studente', forwardIfClient = true) {
+          const clean = (text || '').trim();
+          if (!clean) return;
+          if (forwardIfClient && this.sync.role === 'client') {
+            this.sync.sendToHost({ type: 'SUBMIT_QA', text: clean, author });
+            return;
+          }
+          this.updateRoom(code, (room) => {
+            if (!room.qa) room.qa = [];
+            room.qa.unshift({
+              id: uid('qa'),
+              text: clean,
+              author: (author || 'Studente').trim(),
+              upvotes: 1,
+              upvotedBy: [],
+              answered: false,
+              ts: Date.now()
+            });
+          });
+        }
+
+        toggleUpvoteQuestion(code, qaId, participantId, forwardIfClient = true) {
+          if (forwardIfClient && this.sync.role === 'client') {
+            this.sync.sendToHost({ type: 'UPVOTE_QA', qaId, participantId });
+            return;
+          }
+          this.updateRoom(code, (room) => {
+            const q = (room.qa || []).find(item => item.id === qaId);
+            if (!q) return;
+            if (!q.upvotedBy) q.upvotedBy = [];
+            const idx = q.upvotedBy.indexOf(participantId);
+            if (idx === -1) {
+              q.upvotedBy.push(participantId);
+              q.upvotes = (q.upvotes || 0) + 1;
+            } else {
+              q.upvotedBy.splice(idx, 1);
+              q.upvotes = Math.max(0, (q.upvotes || 1) - 1);
+            }
+          });
+        }
+
+        sendReaction(code, emoji) {
+          spawnFloatingReaction(emoji);
+          this.bcPost({ type: 'REACTION', code, emoji });
+          if (this.sync.role === 'client') {
+            this.sync.sendToHost({ type: 'REACTION', emoji });
+          }
+        }
+      }
+
+      const store = new AulaStore();
+
+      // =========================================================================
+      // 6. STATO UI LOCALE, TIMER QUIZ E PRESERVAZIONE FOCUS
+      // =========================================================================
+      let participantDeviceId = localStorage.getItem('aulalive_device_id');
+      if (!participantDeviceId) {
+        participantDeviceId = uid('stu');
+        localStorage.setItem('aulalive_device_id', participantDeviceId);
+      }
+
+      const appState = {
+        view: 'home', // 'home' | 'editor' | 'stage' | 'audience'
+        roomCode: null,
+        editorTab: 'content', // 'content' | 'theme'
+        mobileEditorPane: 'edit', // 'slides' | 'preview' | 'edit'
+        showPhoneSim: true,
+        simStudentIndex: 0,
+        showQaDrawer: false,
+        fontScale: 0, // 0 = normale, 1 = A+, 2 = A++
+        studentName: localStorage.getItem('aulalive_student_name') || '',
+        audienceSubTab: 'vote', // 'vote' | 'qa'
+        drafts: {} // Bozze input studente per non perdere mai testi o slider tra i render
+      };
+
+      let quizIntervalId = null;
+
+      function ensureQuizTimerLoop() {
+        if (quizIntervalId) {
+          clearInterval(quizIntervalId);
+          quizIntervalId = null;
+        }
+        quizIntervalId = setInterval(() => {
+          if (!appState.roomCode) return;
+          if (appState.view !== 'editor' && appState.view !== 'stage') return;
+          const room = store.rooms[appState.roomCode];
+          if (!room) return;
+          const slide = room.slides[room.activeSlideIndex];
+          if (!slide || slide.type !== 'quiz') return;
+
+          if (slide.status === 'running') {
+            if (slide.timeLeft > 1) {
+              store.updateRoom(room.code, (r) => {
+                const s = r.slides[r.activeSlideIndex];
+                if (s && s.type === 'quiz' && s.status === 'running') {
+                  s.timeLeft = Math.max(0, s.timeLeft - 1);
+                }
+              });
+            } else {
+              store.updateRoom(room.code, (r) => {
+                const s = r.slides[r.activeSlideIndex];
+                if (s && s.type === 'quiz') {
+                  s.timeLeft = 0;
+                  s.status = 'ended';
+                }
+              });
+              showToast('Tempo scaduto! Ecco i risultati del Quiz.', 'info');
+            }
+          }
+        }, 1000);
+      }
+
+      // =========================================================================
+      // 7. MOTORE WORD CLOUD (Spirale, Collision Detection e ResizeObserver)
+      // =========================================================================
+      let wcResizeObserver = null;
+
+      function computeWordFrequencies(slide) {
+        const freq = new Map();
+        const responses = slide.responses || {};
+        Object.values(responses).forEach(entry => {
+          const words = Array.isArray(entry) ? entry : [entry];
+          words.forEach(raw => {
+            const clean = String(raw || '').trim().replace(/\s+/g, ' ');
+            if (!clean) return;
+            const key = clean.toLowerCase();
+            if (!freq.has(key)) {
+              freq.set(key, { label: clean, count: 1 });
+            } else {
+              freq.get(key).count += 1;
+            }
+          });
+        });
+        return Array.from(freq.values()).sort((a, b) => b.count - a.count);
+      }
+
+      function layoutWordCloudContainers() {
+        const containers = document.querySelectorAll('[data-wordcloud-canvas]');
+        containers.forEach(container => {
+          const rect = container.getBoundingClientRect();
+          const width = rect.width;
+          const height = rect.height;
+          if (width < 60 || height < 60) return;
+
+          const words = Array.from(container.querySelectorAll('.wc-word'));
+          if (words.length === 0) return;
+
+          const placed = [];
+          const cx = width / 2;
+          const cy = height / 2;
+
+          words.forEach((el, idx) => {
+            const w = el.offsetWidth + 14;
+            const h = el.offsetHeight + 10;
+            let angle = idx * 0.9;
+            let radius = 0;
+            let bestX = cx - w / 2;
+            let bestY = cy - h / 2;
+            let found = false;
+
+            for (let step = 0; step < 480; step++) {
+              const x = cx + radius * Math.cos(angle) * 1.28 - w / 2;
+              const y = cy + radius * Math.sin(angle) * 0.86 - h / 2;
+
+              if (x >= 8 && y >= 8 && x + w <= width - 8 && y + h <= height - 8) {
+                const overlaps = placed.some(box => !(
+                  x + w < box.x ||
+                  x > box.x + box.w ||
+                  y + h < box.y ||
+                  y > box.y + box.h
+                ));
+                if (!overlaps) {
+                  bestX = x;
+                  bestY = y;
+                  found = true;
+                  break;
+                }
+              }
+              angle += 0.35;
+              radius += 1.45;
+            }
+
+            if (!found) {
+              bestX = Math.max(8, Math.min(width - w - 8, cx - w / 2 + ((idx % 5) - 2) * 28));
+              bestY = Math.max(8, Math.min(height - h - 8, cy - h / 2 + ((idx % 3) - 1) * 24));
+            }
+
+            placed.push({ x: bestX, y: bestY, w, h });
+            el.style.left = `${Math.round(bestX + 7)}px`;
+            el.style.top = `${Math.round(bestY + 5)}px`;
+            el.style.opacity = '1';
+          });
+        });
+      }
+
+      function initWordCloudObserver() {
+        if (wcResizeObserver) {
+          wcResizeObserver.disconnect();
+        }
+        if ('ResizeObserver' in window) {
+          wcResizeObserver = new ResizeObserver(() => {
+            requestAnimationFrame(layoutWordCloudContainers);
+          });
+          document.querySelectorAll('[data-wordcloud-canvas]').forEach(el => {
+            wcResizeObserver.observe(el);
+          });
+        }
+        requestAnimationFrame(layoutWordCloudContainers);
+      }
+
+      // =========================================================================
+      // 8. RENDERING DEI GRAFICI SUL PALCO / LIM (Stage View)
+      // =========================================================================
+      function getFontScaleClasses() {
+        if (appState.fontScale === 2) {
+          return { title: 'text-3xl sm:text-5xl', sub: 'text-xl sm:text-2xl', body: 'text-xl sm:text-2xl' };
+        }
+        if (appState.fontScale === 1) {
+          return { title: 'text-2xl sm:text-4xl', sub: 'text-lg sm:text-xl', body: 'text-lg sm:text-xl' };
+        }
+        return { title: 'text-xl sm:text-3xl', sub: 'text-base sm:text-lg', body: 'text-base sm:text-lg' };
+      }
+
+      function renderStageSlideContent(room, slide, isCompactPreview = false) {
+        const theme = THEMES[room.theme] || THEMES.cream;
+        const fScale = getFontScaleClasses();
+        const responsesCount = slide.responses ? Object.keys(slide.responses).length : 0;
+
+        let visualHtml = '';
+
+        if (slide.type === 'wordcloud') {
+          const items = computeWordFrequencies(slide);
+          const maxCount = items.length > 0 ? items[0].count : 1;
+          const minCount = items.length > 0 ? items[items.length - 1].count : 1;
+
+          if (items.length === 0) {
+            visualHtml = `
+              <div class="flex-1 flex flex-col items-center justify-center text-center py-12 px-4">
+                <div class="w-20 h-20 rounded-3xl bg-orange-100 text-[#FF5A36] flex items-center justify-center mb-4">
+                  ${getIcon('wordcloud', 'w-10 h-10')}
+                </div>
+                <p class="font-display font-bold text-xl ${theme.textPrimary}">In attesa delle parole degli studenti...</p>
+                <p class="text-sm ${theme.textSecondary} mt-1">Appena inviano una parola dal telefono apparirà qui al centro!</p>
+              </div>
+            `;
+          } else {
+            const wordsHtml = items.map((item, idx) => {
+              const ratio = maxCount === minCount ? 0.65 : (item.count - minCount) / (maxCount - minCount);
+              const minPx = isCompactPreview ? 18 : 22;
+              const maxPx = isCompactPreview ? 50 : 68;
+              const fontSize = Math.round(minPx + ratio * (maxPx - minPx));
+              const color = CHART_PALETTE[idx % CHART_PALETTE.length];
+              const tilt = idx % 5 === 0 ? '-3deg' : (idx % 4 === 0 ? '3deg' : '0deg');
+              return `
+                <span
+                  class="wc-word absolute font-display font-extrabold leading-none tracking-tight px-2 py-1 rounded-xl opacity-0"
+                  style="font-size: ${fontSize}px; color: ${color}; transform: rotate(${tilt});"
+                  title="${escapeHTML(item.label)}: ${item.count} ${item.count === 1 ? 'voto' : 'voti'}"
+                >
+                  ${escapeHTML(item.label)}
+                </span>
+              `;
+            }).join('');
+
+            visualHtml = `
+              <div data-wordcloud-canvas class="relative w-full flex-1 min-h-[290px] sm:min-h-[370px] overflow-hidden select-none">
+                ${wordsHtml}
+              </div>
+            `;
+          }
+        } else if (slide.type === 'multiple_choice') {
+          const options = slide.options || [];
+          const counts = {};
+          options.forEach(o => { counts[o.id] = 0; });
+          Object.values(slide.responses || {}).forEach(optId => {
+            if (counts[optId] !== undefined) counts[optId] += 1;
+          });
+          const totalVotes = Object.values(counts).reduce((a, b) => a + b, 0);
+          const chartType = slide.chartType || 'bar';
+
+          const switcherHtml = `
+            <div class="flex items-center justify-end gap-1.5 mb-4">
+              <span class="text-xs font-bold uppercase tracking-wider ${theme.textSecondary} mr-1">Grafico:</span>
+              ${[
+                { id: 'bar', label: 'Barre' },
+                { id: 'donut', label: 'Ciambella' },
+                { id: 'pie', label: 'Torta' }
+              ].map(ct => `
+                <button
+                  type="button"
+                  data-action="set-chart-type"
+                  data-chart="${ct.id}"
+                  class="px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                    chartType === ct.id
+                      ? 'bg-[#FF5A36] text-white shadow-sm'
+                      : `${theme.pillBg} border hover:opacity-80`
+                  }"
+                >${ct.label}</button>
+              `).join('')}
+            </div>
+          `;
+
+          if (chartType === 'bar') {
+            const barsHtml = options.map((opt, idx) => {
+              const count = counts[opt.id] || 0;
+              const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
+              const color = CHART_PALETTE[idx % CHART_PALETTE.length];
+              return `
+                <div class="space-y-1.5">
+                  <div class="flex items-center justify-between gap-3 ${fScale.body} font-bold ${theme.textPrimary}">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                      <span class="w-7 h-7 rounded-lg text-white text-xs font-extrabold flex items-center justify-center shrink-0" style="background:${color}">
+                        ${String.fromCharCode(65 + idx)}
+                      </span>
+                      <span class="truncate">${escapeHTML(opt.text)}</span>
+                    </div>
+                    <span class="shrink-0 font-display text-lg" style="color:${color}">
+                      ${count} <span class="text-xs font-sans font-semibold ${theme.textSecondary}">(${pct}%)</span>
+                    </span>
+                  </div>
+                  <div class="w-full h-5 rounded-full ${theme.barTrack} overflow-hidden p-0.5">
+                    <div
+                      class="h-full rounded-full transition-all duration-500 ease-out"
+                      style="width: ${pct}%; background-color: ${color}; min-width: ${count > 0 ? '14px' : '0px'};"
+                    ></div>
+                  </div>
+                </div>
+              `;
+            }).join('');
+
+            visualHtml = `${switcherHtml}<div class="space-y-4 my-auto">${barsHtml}</div>`;
+          } else {
+            // Grafico Torta o Ciambella SVG con gestione sicura di 0% e 100%
+            const radius = 92;
+            const cx = 120;
+            const cy = 120;
+            let currentAngle = -Math.PI / 2;
+            let svgPaths = '';
+
+            if (totalVotes === 0) {
+              svgPaths = `<circle cx="${cx}" cy="${cy}" r="${radius}" fill="none" stroke="#CBD5E1" stroke-width="24" stroke-dasharray="8 8" />`;
+            } else {
+              options.forEach((opt, idx) => {
+                const count = counts[opt.id] || 0;
+                if (count === 0) return;
+                const color = CHART_PALETTE[idx % CHART_PALETTE.length];
+                const fraction = count / totalVotes;
+                if (fraction >= 0.999) {
+                  svgPaths += `<circle cx="${cx}" cy="${cy}" r="${radius}" fill="${color}" />`;
+                } else {
+                  const sliceAngle = fraction * Math.PI * 2;
+                  const x1 = cx + radius * Math.cos(currentAngle);
+                  const y1 = cy + radius * Math.sin(currentAngle);
+                  const x2 = cx + radius * Math.cos(currentAngle + sliceAngle);
+                  const y2 = cy + radius * Math.sin(currentAngle + sliceAngle);
+                  const largeArc = sliceAngle > Math.PI ? 1 : 0;
+                  svgPaths += `<path d="M ${cx} ${cy} L ${x1.toFixed(2)} ${y1.toFixed(2)} A ${radius} ${radius} 0 ${largeArc} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} Z" fill="${color}" stroke="${theme.isDark ? '#1E293B' : '#FFFFFF'}" stroke-width="2.5" />`;
+                  currentAngle += sliceAngle;
+                }
+              });
+            }
+
+            if (chartType === 'donut') {
+              svgPaths += `<circle cx="${cx}" cy="${cy}" r="50" fill="${theme.isDark ? '#1E293B' : '#FFFFFF'}" />`;
+              svgPaths += `<text x="${cx}" y="${cy - 4}" text-anchor="middle" fill="${theme.isDark ? '#FFFFFF' : '#0F172A'}" font-family="Outfit, sans-serif" font-weight="800" font-size="24">${totalVotes}</text>`;
+              svgPaths += `<text x="${cx}" y="${cy + 16}" text-anchor="middle" fill="#64748B" font-family="DM Sans, sans-serif" font-weight="700" font-size="11">${totalVotes === 1 ? 'VOTO' : 'VOTI'}</text>`;
+            }
+
+            const legendHtml = options.map((opt, idx) => {
+              const count = counts[opt.id] || 0;
+              const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
+              const color = CHART_PALETTE[idx % CHART_PALETTE.length];
+              return `
+                <div class="flex items-center justify-between gap-3 p-2.5 rounded-2xl border ${theme.isDark ? 'border-slate-700 bg-slate-800/70' : 'border-slate-100 bg-slate-50/90'}">
+                  <div class="flex items-center gap-2.5 min-w-0">
+                    <span class="w-4 h-4 rounded-md shrink-0" style="background:${color}"></span>
+                    <span class="font-bold text-sm sm:text-base ${theme.textPrimary} truncate">${escapeHTML(opt.text)}</span>
+                  </div>
+                  <span class="font-display font-extrabold text-base shrink-0" style="color:${color}">${pct}% <span class="text-xs font-sans ${theme.textSecondary}">(${count})</span></span>
+                </div>
+              `;
+            }).join('');
+
+            visualHtml = `
+              ${switcherHtml}
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center my-auto">
+                <div class="flex items-center justify-center">
+                  <svg viewBox="0 0 240 240" class="w-52 h-52 sm:w-64 sm:h-64 drop-shadow-sm">${svgPaths}</svg>
+                </div>
+                <div class="space-y-2.5">${legendHtml}</div>
+              </div>
+            `;
+          }
+        } else if (slide.type === 'scales') {
+          const statements = slide.statements || [];
+          const allResponses = Object.values(slide.responses || {});
+
+          const rowsHtml = statements.map((st, idx) => {
+            const values = allResponses
+              .map(r => (r && typeof r[st.id] === 'number' ? r[st.id] : null))
+              .filter(v => v !== null);
+            const avg = values.length > 0 ? (values.reduce((a, b) => a + b, 0) / values.length) : 0;
+            const pct = avg > 0 ? ((avg - 1) / 4) * 100 : 0;
+            const color = CHART_PALETTE[idx % CHART_PALETTE.length];
+            const dist = [1, 2, 3, 4, 5].map(score => values.filter(v => v === score).length);
+
+            return `
+              <div class="p-4 rounded-2xl border ${theme.isDark ? 'border-slate-700 bg-slate-800/70' : 'border-slate-200/80 bg-slate-50/70'} space-y-2.5">
+                <div class="flex items-center justify-between gap-3">
+                  <span class="font-bold ${fScale.body} ${theme.textPrimary}">${escapeHTML(st.text)}</span>
+                  <div class="flex items-center gap-2 shrink-0">
+                    <span class="px-3 py-1 rounded-xl text-white font-display font-extrabold text-lg" style="background:${color}">
+                      ${avg > 0 ? avg.toFixed(1) : '—'} <span class="text-xs font-normal opacity-90">/ 5</span>
+                    </span>
+                  </div>
+                </div>
+                <div class="relative w-full h-4 rounded-full ${theme.barTrack} overflow-visible">
+                  <div class="h-full rounded-full transition-all duration-500" style="width:${pct}%; background:${color}"></div>
+                  ${avg > 0 ? `<div class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-white border-4 shadow-md transition-all duration-500" style="left:${pct}%; border-color:${color}"></div>` : ''}
+                </div>
+                <div class="flex items-center justify-between text-xs font-semibold ${theme.textSecondary} pt-1">
+                  <span>Distribuzione voti:</span>
+                  <div class="flex items-center gap-2">
+                    ${dist.map((cnt, i) => `<span class="px-2 py-0.5 rounded-md ${theme.pillBg} border">★${i + 1}: <b>${cnt}</b></span>`).join('')}
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('');
+
+          visualHtml = `
+            <div class="flex items-center justify-between text-xs font-bold ${theme.textSecondary} mb-3 px-1">
+              <span>${escapeHTML(slide.minLabel || '1 • Minimo')}</span>
+              <span>${escapeHTML(slide.maxLabel || '5 • Massimo')}</span>
+            </div>
+            <div class="space-y-3.5 my-auto">${rowsHtml}</div>
+          `;
+        } else if (slide.type === 'ranking') {
+          const items = slide.items || [];
+          const n = items.length;
+          const scores = {};
+          items.forEach(it => { scores[it.id] = 0; });
+
+          Object.values(slide.responses || {}).forEach(orderArr => {
+            if (!Array.isArray(orderArr)) return;
+            orderArr.forEach((itemId, rankIdx) => {
+              if (scores[itemId] !== undefined) {
+                scores[itemId] += Math.max(1, n - rankIdx);
+              }
+            });
+          });
+
+          const sorted = [...items].sort((a, b) => (scores[b.id] || 0) - (scores[a.id] || 0));
+          const maxScore = sorted.length > 0 ? Math.max(1, scores[sorted[0].id] || 1) : 1;
+
+          const rankHtml = sorted.map((it, idx) => {
+            const sc = scores[it.id] || 0;
+            const widthPct = sc > 0 ? Math.round((sc / maxScore) * 100) : 0;
+            const medalBg = idx === 0
+              ? 'bg-amber-400 text-slate-950'
+              : idx === 1
+                ? 'bg-slate-300 text-slate-900'
+                : idx === 2
+                  ? 'bg-orange-300 text-slate-950'
+                  : 'bg-slate-200 text-slate-700';
+
+            return `
+              <div class="flex items-center gap-3.5 p-3 rounded-2xl border ${theme.isDark ? 'border-slate-700 bg-slate-800/70' : 'border-slate-200/80 bg-white'}">
+                <div class="w-10 h-10 rounded-xl ${medalBg} font-display font-black text-lg flex items-center justify-center shrink-0 shadow-sm">
+                  ${idx + 1}°
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center justify-between gap-2 mb-1.5">
+                    <span class="font-bold ${fScale.body} ${theme.textPrimary} truncate">${escapeHTML(it.text)}</span>
+                    <span class="text-xs font-extrabold px-2.5 py-0.5 rounded-lg bg-amber-100 text-amber-900 shrink-0">${sc} pt</span>
+                  </div>
+                  <div class="w-full h-2.5 rounded-full ${theme.barTrack} overflow-hidden">
+                    <div class="h-full rounded-full bg-amber-500 transition-all duration-500" style="width:${widthPct}%"></div>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('');
+
+          visualHtml = `<div class="space-y-3 my-auto">${rankHtml}</div>`;
+        } else if (slide.type === 'open_ended') {
+          const entries = Object.entries(slide.responses || {});
+          const noteColors = [
+            'border-t-4 border-t-[#FF5A36] bg-orange-50/70',
+            'border-t-4 border-t-blue-500 bg-blue-50/70',
+            'border-t-4 border-t-emerald-500 bg-emerald-50/70',
+            'border-t-4 border-t-amber-400 bg-amber-50/70',
+            'border-t-4 border-t-cyan-500 bg-cyan-50/70'
+          ];
+
+          if (entries.length === 0) {
+            visualHtml = `
+              <div class="flex-1 flex flex-col items-center justify-center text-center py-12">
+                <div class="w-20 h-20 rounded-3xl bg-cyan-100 text-cyan-600 flex items-center justify-center mb-4">
+                  ${getIcon('open_ended', 'w-10 h-10')}
+                </div>
+                <p class="font-display font-bold text-xl ${theme.textPrimary}">Bacheca pronta per i messaggi della classe</p>
+                <p class="text-sm ${theme.textSecondary} mt-1">Clicca su un bigliettino quando appare per ingrandirlo a tutto schermo.</p>
+              </div>
+            `;
+          } else {
+            const cardsHtml = entries.map(([pid, entry], idx) => {
+              const text = typeof entry === 'string' ? entry : (entry && entry.text) || '';
+              const author = typeof entry === 'object' && entry && entry.author ? entry.author : 'Studente';
+              const colorCls = theme.isDark
+                ? 'border-t-4 border-t-[#FF5A36] bg-slate-800 text-white border border-slate-700'
+                : `${noteColors[idx % noteColors.length]} text-slate-900 border border-slate-200/80`;
+              return `
+                <button
+                  type="button"
+                  data-action="open-spotlight"
+                  data-text="${escapeHTML(text)}"
+                  data-author="${escapeHTML(author)}"
+                  class="text-left p-4 rounded-2xl shadow-card hover:-translate-y-1 transition-all flex flex-col justify-between min-h-[120px] ${colorCls}"
+                >
+                  <p class="font-medium ${fScale.body} leading-snug line-clamp-4">“${escapeHTML(text)}”</p>
+                  <div class="flex items-center justify-between mt-3 pt-2 border-t border-black/5 text-xs font-bold opacity-70">
+                    <span>${escapeHTML(author)}</span>
+                    <span>Ingrandisci ↗</span>
+                  </div>
+                </button>
+              `;
+            }).join('');
+
+            visualHtml = `
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 overflow-y-auto max-h-[420px] pr-1 my-auto">
+                ${cardsHtml}
+              </div>
+            `;
+          }
+        } else if (slide.type === 'quiz') {
+          const status = slide.status || 'waiting';
+          const timeLeft = typeof slide.timeLeft === 'number' ? slide.timeLeft : (slide.duration || 25);
+          const options = slide.options || [];
+          const counts = {};
+          options.forEach(o => { counts[o.id] = 0; });
+          Object.values(slide.responses || {}).forEach(resp => {
+            if (resp && resp.optionId && counts[resp.optionId] !== undefined) {
+              counts[resp.optionId] += 1;
+            }
+          });
+
+          const controlsHtml = `
+            <div class="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl border ${theme.isDark ? 'border-slate-700 bg-slate-800/80' : 'border-slate-200 bg-slate-50'} mb-4">
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-2xl flex items-center justify-center font-display font-black text-xl ${
+                  status === 'running'
+                    ? (timeLeft <= 5 ? 'bg-rose-600 text-white animate-pulse' : 'bg-[#FF5A36] text-white')
+                    : 'bg-slate-900 text-white'
+                }">
+                  ${timeLeft}s
+                </div>
+                <div>
+                  <div class="text-xs font-extrabold uppercase tracking-wider ${theme.textSecondary}">
+                    ${status === 'waiting' ? 'Pronto per partire' : status === 'running' ? 'Quiz in corso!' : status === 'paused' ? 'In pausa (lettura)' : 'Tempo scaduto • Soluzione'}
+                  </div>
+                  <div class="text-sm font-bold ${theme.textPrimary}">
+                    ${responsesCount} ${responsesCount === 1 ? 'risposta ricevuta' : 'risposte ricevute'}
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex flex-wrap items-center gap-2">
+                ${status === 'waiting' ? `
+                  <button type="button" data-action="quiz-start" class="btn-tactile px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold text-sm flex items-center gap-1.5">
+                    ${getIcon('play', 'w-4 h-4')} Avvia Quiz
+                  </button>
+                ` : ''}
+                ${status === 'running' ? `
+                  <button type="button" data-action="quiz-pause" class="btn-tactile px-3.5 py-2 rounded-xl bg-amber-400 text-slate-950 font-bold text-sm">
+                    ⏸ Pausa
+                  </button>
+                  <button type="button" data-action="quiz-end" class="btn-tactile px-3.5 py-2 rounded-xl bg-blue-600 text-white font-bold text-sm">
+                    ✓ Mostra Soluzione
+                  </button>
+                ` : ''}
+                ${status === 'paused' ? `
+                  <button type="button" data-action="quiz-resume" class="btn-tactile px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold text-sm flex items-center gap-1.5">
+                    ${getIcon('play', 'w-4 h-4')} Riprendi
+                  </button>
+                  <button type="button" data-action="quiz-end" class="btn-tactile px-3.5 py-2 rounded-xl bg-blue-600 text-white font-bold text-sm">
+                    ✓ Mostra Soluzione
+                  </button>
+                ` : ''}
+                ${status !== 'waiting' ? `
+                  <button type="button" data-action="quiz-reset" class="px-3 py-2 rounded-xl border ${theme.pillBg} font-bold text-xs hover:opacity-80">
+                    ↻ Ricomincia
+                  </button>
+                ` : ''}
+              </div>
+            </div>
+          `;
+
+          const optionsGridHtml = options.map((opt, idx) => {
+            const color = CHART_PALETTE[idx % CHART_PALETTE.length];
+            const count = counts[opt.id] || 0;
+            const showResult = status === 'ended';
+            const cardBorder = showResult
+              ? (opt.isCorrect
+                  ? 'border-emerald-500 ring-4 ring-emerald-500/20 bg-emerald-50/90 text-slate-900'
+                  : 'opacity-50 border-slate-200 bg-slate-100/70 text-slate-600')
+              : (theme.isDark ? 'border-slate-700 bg-slate-800/80 text-white' : 'border-slate-200 bg-white text-slate-900');
+
+            return `
+              <div class="p-4 rounded-2xl border-2 transition-all flex items-center justify-between gap-3 ${cardBorder}">
+                <div class="flex items-center gap-3 min-w-0">
+                  <span class="w-9 h-9 rounded-xl text-white font-display font-black text-base flex items-center justify-center shrink-0" style="background:${color}">
+                    ${String.fromCharCode(65 + idx)}
+                  </span>
+                  <span class="font-bold ${fScale.body} leading-snug">${escapeHTML(opt.text)}</span>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                  ${showResult && opt.isCorrect ? `<span class="px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-xs font-extrabold">✓ Corretta</span>` : ''}
+                  ${showResult ? `<span class="font-display font-black text-lg text-slate-800">${count}</span>` : ''}
+                </div>
+              </div>
+            `;
+          }).join('');
+
+          visualHtml = `${controlsHtml}<div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 my-auto">${optionsGridHtml}</div>`;
+        } else if (slide.type === 'leaderboard') {
+          // Somma punti da tutte le slide Quiz della presentazione
+          const totals = {};
+          (room.slides || []).forEach(sl => {
+            if (sl.type !== 'quiz' || !sl.responses) return;
+            Object.entries(sl.responses).forEach(([pid, resp]) => {
+              if (!resp) return;
+              if (!totals[pid]) {
+                const simFound = SIMULATED_STUDENTS.find(s => s.id === pid);
+                totals[pid] = {
+                  id: pid,
+                  name: resp.name || (simFound ? simFound.name : 'Studente'),
+                  points: 0
+                };
+              }
+              totals[pid].points += Number(resp.points || 0);
+            });
+          });
+
+          const ranking = Object.values(totals).sort((a, b) => b.points - a.points).slice(0, 5);
+
+          if (ranking.length === 0) {
+            visualHtml = `
+              <div class="flex-1 flex flex-col items-center justify-center text-center py-12">
+                <div class="w-20 h-20 rounded-3xl bg-yellow-100 text-yellow-600 flex items-center justify-center mb-4">
+                  ${getIcon('leaderboard', 'w-10 h-10')}
+                </div>
+                <p class="font-display font-bold text-xl ${theme.textPrimary}">Nessun punteggio ancora registrato</p>
+                <p class="text-sm ${theme.textSecondary} mt-1">Avvia prima una slide Quiz per popolare il podio della classe!</p>
+              </div>
+            `;
+          } else {
+            const first = ranking[0];
+            const second = ranking[1];
+            const third = ranking[2];
+            const rest = ranking.slice(3);
+
+            const confettiHtml = Array.from({ length: 18 }).map((_, i) => {
+              const left = 5 + ((i * 5.3) % 90);
+              const delay = (i % 6) * 0.25;
+              const col = CHART_PALETTE[i % CHART_PALETTE.length];
+              return `<span class="confetti-piece" style="left:${left}%; animation-delay:${delay}s; background:${col}"></span>`;
+            }).join('');
+
+            visualHtml = `
+              <div class="relative overflow-hidden py-2 my-auto">
+                ${confettiHtml}
+                <div class="flex items-end justify-center gap-3 sm:gap-5 max-w-xl mx-auto pt-6 pb-4">
+                  <!-- 2° Posto -->
+                  <div class="flex-1 flex flex-col items-center">
+                    ${second ? `
+                      <div class="text-center mb-2">
+                        <div class="font-display font-extrabold text-sm sm:text-base ${theme.textPrimary} truncate max-w-[110px]">${escapeHTML(second.name)}</div>
+                        <div class="text-xs font-extrabold text-slate-500">${second.points} pt</div>
+                      </div>
+                      <div class="w-full h-24 sm:h-28 rounded-t-2xl bg-slate-300 border-t-4 border-slate-400 flex flex-col items-center justify-center shadow-md">
+                        <span class="font-display font-black text-3xl text-slate-800">2°</span>
+                      </div>
+                    ` : '<div class="w-full h-24"></div>'}
+                  </div>
+
+                  <!-- 1° Posto -->
+                  <div class="flex-1 flex flex-col items-center">
+                    ${first ? `
+                      <div class="text-center mb-2">
+                        <div class="text-2xl mb-0.5">👑</div>
+                        <div class="font-display font-black text-base sm:text-xl ${theme.textPrimary} truncate max-w-[130px]">${escapeHTML(first.name)}</div>
+                        <div class="text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-amber-300 text-slate-950 inline-block mt-0.5">${first.points} pt</div>
+                      </div>
+                      <div class="w-full h-36 sm:h-40 rounded-t-2xl bg-gradient-to-b from-amber-300 to-amber-400 border-t-4 border-amber-500 flex flex-col items-center justify-center shadow-lg">
+                        <span class="font-display font-black text-4xl text-slate-950">1°</span>
+                      </div>
+                    ` : ''}
+                  </div>
+
+                  <!-- 3° Posto -->
+                  <div class="flex-1 flex flex-col items-center">
+                    ${third ? `
+                      <div class="text-center mb-2">
+                        <div class="font-display font-extrabold text-sm sm:text-base ${theme.textPrimary} truncate max-w-[110px]">${escapeHTML(third.name)}</div>
+                        <div class="text-xs font-extrabold text-orange-600">${third.points} pt</div>
+                      </div>
+                      <div class="w-full h-20 sm:h-24 rounded-t-2xl bg-orange-300 border-t-4 border-orange-400 flex flex-col items-center justify-center shadow-md">
+                        <span class="font-display font-black text-3xl text-slate-900">3°</span>
+                      </div>
+                    ` : '<div class="w-full h-20"></div>'}
+                  </div>
+                </div>
+
+                ${rest.length > 0 ? `
+                  <div class="max-w-md mx-auto space-y-2 mt-2">
+                    ${rest.map((item, idx) => `
+                      <div class="flex items-center justify-between px-4 py-2 rounded-xl border ${theme.pillBg}">
+                        <span class="font-bold text-sm"><b class="mr-2">${idx + 4}°</b> ${escapeHTML(item.name)}</span>
+                        <span class="font-display font-extrabold text-sm">${item.points} pt</span>
+                      </div>
+                    `).join('')}
+                  </div>
+                ` : ''}
+              </div>
+            `;
+          }
+        }
+
+        const typeMeta = SLIDE_TYPES[slide.type] || SLIDE_TYPES.multiple_choice;
+
+        return `
+          <div class="w-full h-full rounded-3xl border p-5 sm:p-8 flex flex-col justify-between transition-colors ${theme.cardBg}">
+            <!-- Intestazione Domanda -->
+            <div class="mb-4">
+              <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl border text-xs font-extrabold uppercase tracking-wider ${typeMeta.badgeBg}">
+                  ${getIcon(slide.type, 'w-3.5 h-3.5')}
+                  ${typeMeta.label}
+                </span>
+                ${slide.type !== 'leaderboard' ? `
+                  <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl border text-xs font-bold ${theme.pillBg}">
+                    ${getIcon('users', 'w-3.5 h-3.5')}
+                    ${responsesCount} ${responsesCount === 1 ? 'partecipante' : 'partecipanti'}
+                  </span>
+                ` : ''}
+              </div>
+              <h2 class="font-display font-black ${fScale.title} leading-tight ${theme.textPrimary}">
+                ${escapeHTML(slide.question)}
+              </h2>
+              ${slide.subtitle ? `<p class="${fScale.sub} ${theme.textSecondary} mt-1.5 font-medium">${escapeHTML(slide.subtitle)}</p>` : ''}
+            </div>
+
+            <!-- Area Visualizzazione Grafica -->
+            <div class="flex-1 flex flex-col justify-center min-h-0">
+              ${visualHtml}
+            </div>
+          </div>
+        `;
+      }
+
+      // =========================================================================
+      // 9. RENDERING INTERFACCIA SMARTPHONE STUDENTE (Reale & Telefono Test)
+      // =========================================================================
+      function renderStudentSlideForm(room, slide, participantId, participantName, isSimulator = false) {
+        const draftKey = `${room.code}_${slide.id}_${participantId}`;
+        const existingResp = slide.responses ? slide.responses[participantId] : undefined;
+        const sizeCls = appState.fontScale === 2 ? 'text-xl' : appState.fontScale === 1 ? 'text-lg' : 'text-base';
+
+        let formHtml = '';
+
+        if (slide.type === 'wordcloud') {
+          const maxWords = slide.maxWords || 3;
+          const draftWords = appState.drafts[draftKey] || Array.from({ length: maxWords }, (_, i) => (Array.isArray(existingResp) ? (existingResp[i] || '') : ''));
+          const inputs = Array.from({ length: maxWords }).map((_, i) => `
+            <input
+              type="text"
+              maxlength="28"
+              placeholder="Parola ${i + 1}${i === 0 ? ' (obbligatoria)' : ' (facoltativa)'}"
+              value="${escapeHTML(draftWords[i] || '')}"
+              data-draft-key="${escapeHTML(draftKey)}"
+              data-word-index="${i}"
+              class="w-full px-4 py-3.5 rounded-2xl border-2 border-slate-200 focus:border-[#FF5A36] focus:outline-none font-bold text-slate-900 bg-white ${sizeCls}"
+            />
+          `).join('');
+
+          formHtml = `
+            <form data-action="submit-wordcloud" data-slide-id="${escapeHTML(slide.id)}" data-sim="${isSimulator}" class="space-y-3">
+              ${inputs}
+              <button type="submit" class="btn-tactile w-full py-3.5 rounded-2xl bg-[#FF5A36] text-white font-display font-extrabold text-base">
+                ${existingResp ? 'Aggiorna le tue parole ✓' : 'Invia alla LIM 🚀'}
+              </button>
+            </form>
+          `;
+        } else if (slide.type === 'multiple_choice') {
+          const options = slide.options || [];
+          formHtml = `
+            <div class="space-y-2.5">
+              ${options.map((opt, idx) => {
+                const selected = existingResp === opt.id;
+                const color = CHART_PALETTE[idx % CHART_PALETTE.length];
+                return `
+                  <button
+                    type="button"
+                    data-action="vote-mc"
+                    data-slide-id="${escapeHTML(slide.id)}"
+                    data-option-id="${escapeHTML(opt.id)}"
+                    data-sim="${isSimulator}"
+                    class="btn-tactile w-full p-3.5 rounded-2xl border-2 text-left flex items-center gap-3 transition ${
+                      selected
+                        ? 'border-slate-900 bg-amber-100/90 text-slate-950'
+                        : 'border-slate-200 bg-white hover:border-slate-400 text-slate-800'
+                    }"
+                  >
+                    <span class="w-8 h-8 rounded-xl text-white font-display font-black text-sm flex items-center justify-center shrink-0" style="background:${color}">
+                      ${String.fromCharCode(65 + idx)}
+                    </span>
+                    <span class="font-bold ${sizeCls} flex-1 leading-snug">${escapeHTML(opt.text)}</span>
+                    ${selected ? `<span class="text-emerald-600 font-black text-lg">✓</span>` : ''}
+                  </button>
+                `;
+              }).join('')}
+            </div>
+          `;
+        } else if (slide.type === 'scales') {
+          const statements = slide.statements || [];
+          if (!appState.drafts[draftKey]) {
+            const initObj = {};
+            statements.forEach(st => {
+              initObj[st.id] = existingResp && typeof existingResp[st.id] === 'number' ? existingResp[st.id] : 3;
+            });
+            appState.drafts[draftKey] = initObj;
+          }
+          const currentVals = appState.drafts[draftKey];
+
+          formHtml = `
+            <form data-action="submit-scales" data-slide-id="${escapeHTML(slide.id)}" data-sim="${isSimulator}" class="space-y-4">
+              ${statements.map((st) => {
+                const val = currentVals[st.id] || 3;
+                return `
+                  <div class="p-3.5 rounded-2xl bg-white border-2 border-slate-200 space-y-2.5">
+                    <div class="flex items-start justify-between gap-2">
+                      <span class="font-bold text-sm text-slate-800 leading-snug">${escapeHTML(st.text)}</span>
+                      <span data-scale-badge="${escapeHTML(draftKey)}_${escapeHTML(st.id)}" class="px-2.5 py-0.5 rounded-xl bg-[#FF5A36] text-white font-display font-black text-base shrink-0">
+                        ${val}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="5"
+                      step="1"
+                      value="${val}"
+                      data-action="change-scale-slider"
+                      data-draft-key="${escapeHTML(draftKey)}"
+                      data-stid="${escapeHTML(st.id)}"
+                      class="aula-slider"
+                    />
+                    <div class="flex justify-between text-[11px] font-bold text-slate-400">
+                      <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+              <button type="submit" class="btn-tactile w-full py-3.5 rounded-2xl bg-emerald-600 text-white font-display font-extrabold text-base">
+                ${existingResp ? 'Aggiorna Valutazione ✓' : 'Invia Valutazione ✓'}
+              </button>
+            </form>
+          `;
+        } else if (slide.type === 'ranking') {
+          const items = slide.items || [];
+          const validIds = items.map(i => i.id);
+          if (!appState.drafts[draftKey]) {
+            const base = Array.isArray(existingResp)
+              ? existingResp.filter(id => validIds.includes(id))
+              : [];
+            validIds.forEach(id => { if (!base.includes(id)) base.push(id); });
+            appState.drafts[draftKey] = base;
+          } else {
+            const cleaned = appState.drafts[draftKey].filter(id => validIds.includes(id));
+            validIds.forEach(id => { if (!cleaned.includes(id)) cleaned.push(id); });
+            appState.drafts[draftKey] = cleaned;
+          }
+
+          const order = appState.drafts[draftKey];
+          formHtml = `
+            <div class="space-y-2.5">
+              ${order.map((itemId, idx) => {
+                const item = items.find(i => i.id === itemId);
+                if (!item) return '';
+                return `
+                  <div class="p-3 rounded-2xl bg-white border-2 border-slate-200 flex items-center gap-2.5">
+                    <span class="w-8 h-8 rounded-xl bg-amber-400 text-slate-950 font-display font-black text-sm flex items-center justify-center shrink-0">
+                      ${idx + 1}°
+                    </span>
+                    <span class="font-bold text-sm text-slate-800 flex-1 leading-snug">${escapeHTML(item.text)}</span>
+                    <div class="flex flex-col gap-1 shrink-0">
+                      <button
+                        type="button"
+                        data-action="rank-move"
+                        data-draft-key="${escapeHTML(draftKey)}"
+                        data-index="${idx}"
+                        data-dir="-1"
+                        ${idx === 0 ? 'disabled' : ''}
+                        class="w-8 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-30 font-black text-xs text-slate-700"
+                      >▲</button>
+                      <button
+                        type="button"
+                        data-action="rank-move"
+                        data-draft-key="${escapeHTML(draftKey)}"
+                        data-index="${idx}"
+                        data-dir="1"
+                        ${idx === order.length - 1 ? 'disabled' : ''}
+                        class="w-8 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-30 font-black text-xs text-slate-700"
+                      >▼</button>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+              <button
+                type="button"
+                data-action="submit-ranking"
+                data-slide-id="${escapeHTML(slide.id)}"
+                data-draft-key="${escapeHTML(draftKey)}"
+                data-sim="${isSimulator}"
+                class="btn-tactile w-full py-3.5 mt-2 rounded-2xl bg-amber-400 text-slate-950 font-display font-extrabold text-base"
+              >
+                ${existingResp ? 'Aggiorna Classifica ✓' : 'Conferma Classifica ✓'}
+              </button>
+            </div>
+          `;
+        } else if (slide.type === 'open_ended') {
+          const prevText = typeof existingResp === 'string' ? existingResp : (existingResp && existingResp.text) || '';
+          const draftText = appState.drafts[draftKey] !== undefined ? appState.drafts[draftKey] : prevText;
+
+          formHtml = `
+            <form data-action="submit-open" data-slide-id="${escapeHTML(slide.id)}" data-sim="${isSimulator}" class="space-y-3">
+              <textarea
+                rows="4"
+                maxlength="240"
+                placeholder="Scrivi qui la tua risposta per la classe..."
+                data-open-draft="${escapeHTML(draftKey)}"
+                class="w-full p-4 rounded-2xl border-2 border-slate-200 focus:border-[#FF5A36] focus:outline-none font-medium text-slate-900 bg-white ${sizeCls}"
+              >${escapeHTML(draftText)}</textarea>
+              <button type="submit" class="btn-tactile w-full py-3.5 rounded-2xl bg-[#FF5A36] text-white font-display font-extrabold text-base">
+                ${existingResp ? 'Aggiorna Bigliettino ✓' : 'Invia alla LIM 🚀'}
+              </button>
+            </form>
+          `;
+        } else if (slide.type === 'quiz') {
+          const status = slide.status || 'waiting';
+          const options = slide.options || [];
+
+          if (status === 'waiting') {
+            formHtml = `
+              <div class="p-6 rounded-3xl bg-white border-2 border-slate-200 text-center space-y-2">
+                <div class="text-4xl">⏳</div>
+                <p class="font-display font-extrabold text-lg text-slate-900">Preparati per il Quiz!</p>
+                <p class="text-sm text-slate-600">Appena l’insegnante preme <b>Avvia Quiz</b> sulla LIM vedrai le risposte qui.</p>
+              </div>
+            `;
+          } else if (existingResp && existingResp.optionId) {
+            const chosenOpt = options.find(o => o.id === existingResp.optionId);
+            if (status === 'ended') {
+              formHtml = `
+                <div class="p-6 rounded-3xl border-2 text-center space-y-2 ${
+                  existingResp.isCorrect
+                    ? 'bg-emerald-50 border-emerald-500 text-emerald-950'
+                    : 'bg-rose-50 border-rose-400 text-rose-950'
+                }">
+                  <div class="text-4xl">${existingResp.isCorrect ? '🎉' : '💡'}</div>
+                  <p class="font-display font-black text-xl">
+                    ${existingResp.isCorrect ? `Risposta Corretta! +${existingResp.points} pt` : 'Non era quella giusta!'}
+                  </p>
+                  <p class="text-sm font-medium opacity-85">Hai scelto: <b>${escapeHTML(chosenOpt ? chosenOpt.text : '')}</b></p>
+                </div>
+              `;
+            } else {
+              formHtml = `
+                <div class="p-6 rounded-3xl bg-blue-50 border-2 border-blue-300 text-center space-y-2">
+                  <div class="text-4xl">🔒</div>
+                  <p class="font-display font-extrabold text-lg text-blue-950">Risposta registrata!</p>
+                  <p class="text-sm text-blue-800">Hai scelto: <b>${escapeHTML(chosenOpt ? chosenOpt.text : '')}</b>.<br/>Attendi la fine del tempo sulla LIM.</p>
+                </div>
+              `;
+            }
+          } else if (status === 'ended') {
+            formHtml = `
+              <div class="p-6 rounded-3xl bg-slate-100 border-2 border-slate-300 text-center space-y-2">
+                <div class="text-4xl">⏰</div>
+                <p class="font-display font-extrabold text-lg text-slate-900">Tempo scaduto!</p>
+                <p class="text-sm text-slate-600">Guarda la soluzione corretta proiettata alla LIM.</p>
+              </div>
+            `;
+          } else {
+            formHtml = `
+              <div class="space-y-2.5">
+                <div class="flex items-center justify-between text-xs font-extrabold text-rose-600 px-1">
+                  <span>${status === 'paused' ? '⏸ Tempo in pausa' : '⚡ Rispondi veloce!'}</span>
+                  <span>${slide.timeLeft || 0}s rimasti</span>
+                </div>
+                ${options.map((opt, idx) => {
+                  const color = CHART_PALETTE[idx % CHART_PALETTE.length];
+                  return `
+                    <button
+                      type="button"
+                      data-action="vote-quiz"
+                      data-slide-id="${escapeHTML(slide.id)}"
+                      data-option-id="${escapeHTML(opt.id)}"
+                      data-sim="${isSimulator}"
+                      class="btn-tactile w-full p-3.5 rounded-2xl border-2 border-slate-200 bg-white hover:border-slate-900 text-left flex items-center gap-3"
+                    >
+                      <span class="w-9 h-9 rounded-xl text-white font-display font-black text-base flex items-center justify-center shrink-0" style="background:${color}">
+                        ${String.fromCharCode(65 + idx)}
+                      </span>
+                      <span class="font-bold ${sizeCls} text-slate-900 leading-snug">${escapeHTML(opt.text)}</span>
+                    </button>
+                  `;
+                }).join('')}
+              </div>
+            `;
+          }
+        } else if (slide.type === 'leaderboard') {
+          formHtml = `
+            <div class="p-6 rounded-3xl bg-amber-50 border-2 border-amber-300 text-center space-y-2">
+              <div class="text-4xl">🏆</div>
+              <p class="font-display font-extrabold text-lg text-slate-900">Guarda il Podio alla LIM!</p>
+              <p class="text-sm text-slate-600">Puoi inviare un applauso o una reazione qui sotto.</p>
+            </div>
+          `;
+        }
+
+        return `
+          <div class="space-y-4">
+            <div class="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-card">
+              <span class="inline-block text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-lg bg-orange-100 text-orange-800 mb-1.5">
+                Slide ${room.activeSlideIndex + 1} di ${room.slides.length}
+              </span>
+              <h3 class="font-display font-extrabold text-lg sm:text-xl text-slate-900 leading-snug">
+                ${escapeHTML(slide.question)}
+              </h3>
+              ${slide.subtitle ? `<p class="text-xs sm:text-sm text-slate-500 mt-1">${escapeHTML(slide.subtitle)}</p>` : ''}
+            </div>
+
+            ${formHtml}
+          </div>
+        `;
+      }
+
+      // =========================================================================
+      // 10. VISTE PRINCIPALI: HOME, EDITOR 3-COLONNE, LIM STAGE E SMARTPHONE
+      // =========================================================================
+      function renderHomeView() {
+        const roomList = Object.values(store.rooms).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+
+        return `
+          <div class="min-h-screen flex flex-col">
+            <!-- Navbar Superiore -->
+            <header class="w-full border-b border-slate-200/80 bg-white/85 backdrop-blur-md sticky top-0 z-30">
+              <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  ${getIcon('logo', 'w-10 h-10')}
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <span class="font-display font-black text-2xl tracking-tight text-slate-900">Aula<span class="text-[#FF5A36]">Live</span></span>
+                      <span class="text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-lg bg-amber-300 text-slate-950">CPIA</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2 text-xs font-bold text-slate-600">
+                  <span class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Pronto per la LIM • Zero Database
+                  </span>
+                </div>
+              </div>
+            </header>
+
+            <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-10">
+              <!-- Hero + Biglietto Ingresso Studenti -->
+              <section class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                <div class="lg:col-span-7 bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-8 shadow-soft flex flex-col justify-between">
+                  <div>
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-orange-100 text-[#FF5A36] text-xs font-extrabold uppercase tracking-wider mb-4">
+                      ${getIcon('sparkles', 'w-4 h-4')} Didattica Attiva & Partecipativa
+                    </span>
+                    <h1 class="font-display font-black text-3xl sm:text-4xl text-slate-900 leading-tight">
+                      Coinvolgi tutta la classe in diretta alla <span class="text-[#FF5A36]">LIM</span>.
+                    </h1>
+                    <p class="text-slate-600 text-base sm:text-lg mt-3 leading-relaxed">
+                      Crea nuvole di parole, sondaggi, scale di autovalutazione e quiz a tempo. Gli studenti partecipano subito dal loro smartphone senza installare app né registrarsi.
+                    </p>
+                  </div>
+
+                  <div class="flex flex-wrap items-center gap-3 mt-6 pt-6 border-t border-slate-100">
+                    <button
+                      type="button"
+                      data-action="create-room"
+                      class="btn-tactile px-5 py-3.5 rounded-2xl bg-[#FF5A36] text-white font-display font-extrabold text-base flex items-center gap-2"
+                    >
+                      ${getIcon('plus', 'w-5 h-5')} Crea Nuova Lezione
+                    </button>
+                    <button
+                      type="button"
+                      data-action="open-demo"
+                      class="btn-tactile px-5 py-3.5 rounded-2xl bg-amber-300 text-slate-950 font-display font-extrabold text-base flex items-center gap-2"
+                    >
+                      ${getIcon('play', 'w-4 h-4')} Apri Lezione Demo
+                    </button>
+                    <button
+                      type="button"
+                      data-action="import-json"
+                      class="btn-tactile px-5 py-3.5 rounded-2xl bg-white border-2 border-slate-200 hover:border-slate-900 text-slate-800 font-display font-extrabold text-base flex items-center gap-2"
+                    >
+                      ${getIcon('upload', 'w-4 h-4')} Carica File (.json)
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Box Studente: Entra in Aula -->
+                <div class="lg:col-span-5 rounded-3xl bg-gradient-to-br from-[#FF5A36] to-[#E84522] text-white p-6 sm:p-8 shadow-soft flex flex-col justify-between relative overflow-hidden">
+                  <div class="absolute -right-8 -top-8 w-36 h-36 rounded-full bg-white/10 pointer-events-none"></div>
+                  <div>
+                    <span class="inline-block px-3 py-1 rounded-xl bg-white/20 text-white text-xs font-extrabold uppercase tracking-wider mb-3">
+                      Area Studenti
+                    </span>
+                    <h2 class="font-display font-black text-2xl sm:text-3xl">Entra in Aula</h2>
+                    <p class="text-white/90 text-sm mt-1">
+                      Inserisci il codice a 6 cifre proiettato sulla lavagna dell’insegnante.
+                    </p>
+                  </div>
+
+                  <form data-action="join-room-form" class="mt-6 space-y-3">
+                    <input
+                      type="text"
+                      name="roomCode"
+                      inputmode="numeric"
+                      maxlength="6"
+                      placeholder="Es. 482910"
+                      class="w-full px-4 py-4 rounded-2xl bg-white text-slate-950 font-display font-black text-2xl sm:text-3xl tracking-[0.22em] text-center placeholder:text-slate-300 placeholder:tracking-normal placeholder:font-sans placeholder:text-lg focus:outline-none focus:ring-4 focus:ring-amber-300"
+                    />
+                    <button
+                      type="submit"
+                      class="btn-tactile w-full py-3.5 rounded-2xl bg-slate-950 text-white font-display font-extrabold text-base hover:bg-slate-900"
+                    >
+                      Partecipa Ora →
+                    </button>
+                  </form>
+                </div>
+              </section>
+
+              <!-- Modelli Rapidi CPIA -->
+              <section class="space-y-4">
+                <div class="flex items-center justify-between">
+                  <h2 class="font-display font-extrabold text-xl sm:text-2xl text-slate-900">Modelli Pronti per il CPIA (1 Clic)</h2>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  ${[
+                    { key: 'accoglienza', title: 'Accoglienza e Conoscenza', desc: 'Nuvola di parole + sondaggio preferenze + post-it.', badge: 'Accoglienza', color: 'border-t-4 border-t-[#FF5A36]' },
+                    { key: 'ripasso', title: 'Ripasso e Verifica Formativa', desc: '2 domande Quiz a tempo + Podio finale della classe.', badge: 'Verifica L2', color: 'border-t-4 border-t-blue-600' },
+                    { key: 'feedback', title: 'Autovalutazione Fine Modulo', desc: 'Scale 1-5 + nuvola parole chiave + suggerimenti.', badge: 'Feedback', color: 'border-t-4 border-t-emerald-600' }
+                  ].map(tpl => `
+                    <button
+                      type="button"
+                      data-action="create-template"
+                      data-template="${tpl.key}"
+                      class="text-left bg-white rounded-2xl border border-slate-200/90 ${tpl.color} p-5 shadow-card hover:-translate-y-1 transition-all flex flex-col justify-between"
+                    >
+                      <div>
+                        <span class="inline-block text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-700 mb-2">${tpl.badge}</span>
+                        <h3 class="font-display font-extrabold text-lg text-slate-900">${tpl.title}</h3>
+                        <p class="text-sm text-slate-600 mt-1">${tpl.desc}</p>
+                      </div>
+                      <span class="text-xs font-extrabold text-[#FF5A36] mt-4 inline-block">+ Usa questo modello →</span>
+                    </button>
+                  `).join('')}
+                </div>
+              </section>
+
+              <!-- Elenco Lezioni del Docente -->
+              <section class="space-y-4">
+                <div class="flex items-center justify-between">
+                  <h2 class="font-display font-extrabold text-xl sm:text-2xl text-slate-900">Le tue Lezioni Interattive (${roomList.length})</h2>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  ${roomList.map((room, idx) => {
+                    const topColors = ['border-t-[#FF5A36]', 'border-t-blue-600', 'border-t-emerald-600', 'border-t-amber-400'];
+                    const topBorder = topColors[idx % topColors.length];
+                    return `
+                      <div class="bg-white rounded-3xl border border-slate-200/90 border-t-4 ${topBorder} p-5 shadow-card flex flex-col justify-between">
+                        <div>
+                          <div class="flex items-center justify-between gap-2 mb-3">
+                            <span class="px-3 py-1 rounded-xl bg-slate-900 text-white font-display font-black text-xs tracking-wider">
+                              CODICE: ${escapeHTML(room.code)}
+                            </span>
+                            <button
+                              type="button"
+                              data-action="delete-room"
+                              data-code="${escapeHTML(room.code)}"
+                              title="Elimina lezione"
+                              class="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                            >
+                              ${getIcon('trash', 'w-4 h-4')}
+                            </button>
+                          </div>
+                          <h3 class="font-display font-extrabold text-lg text-slate-900 line-clamp-2">${escapeHTML(room.title)}</h3>
+                          <p class="text-xs font-bold text-slate-500 mt-1.5">
+                            ${room.slides.length} ${room.slides.length === 1 ? 'slide' : 'slide'} • Tema ${THEMES[room.theme]?.name || 'Carta Crema'}
+                          </p>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2.5 mt-5 pt-4 border-t border-slate-100">
+                          <button
+                            type="button"
+                            data-action="open-editor"
+                            data-code="${escapeHTML(room.code)}"
+                            class="py-2.5 px-3 rounded-xl border-2 border-slate-200 hover:border-slate-900 font-bold text-sm text-slate-800 transition"
+                          >
+                            Modifica
+                          </button>
+                          <button
+                            type="button"
+                            data-action="open-stage"
+                            data-code="${escapeHTML(room.code)}"
+                            class="btn-tactile py-2.5 px-3 rounded-xl bg-[#FF5A36] text-white font-bold text-sm flex items-center justify-center gap-1.5"
+                          >
+                            ${getIcon('play', 'w-3.5 h-3.5')} Proietta LIM
+                          </button>
+                        </div>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              </section>
+            </main>
+          </div>
+        `;
+      }
+
+      function renderPhoneSimulator(room, slide) {
+        const simStudent = SIMULATED_STUDENTS[appState.simStudentIndex % SIMULATED_STUDENTS.length];
+        return `
+          <div class="w-[330px] shrink-0 flex flex-col items-center">
+            <div class="w-full rounded-[38px] bg-slate-950 p-3 shadow-phone border-4 border-slate-800">
+              <!-- Notch -->
+              <div class="w-28 h-5 bg-slate-950 rounded-b-2xl mx-auto mb-1 flex items-center justify-center">
+                <div class="w-10 h-1 rounded-full bg-slate-800"></div>
+              </div>
+              <!-- Schermo Telefono -->
+              <div class="bg-[#FAF7F2] rounded-[28px] overflow-hidden flex flex-col h-[560px]">
+                <div class="bg-slate-900 text-white px-3.5 py-2.5 flex items-center justify-between gap-2">
+                  <div class="flex items-center gap-1.5 min-w-0">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
+                    <span class="text-[11px] font-extrabold uppercase tracking-wider text-amber-300 shrink-0">Test:</span>
+                    <select
+                      data-action="change-sim-student"
+                      class="bg-slate-800 text-white text-xs font-bold rounded-lg px-2 py-1 border border-slate-700 focus:outline-none truncate"
+                    >
+                      ${SIMULATED_STUDENTS.map((st, idx) => `
+                        <option value="${idx}" ${idx === appState.simStudentIndex ? 'selected' : ''}>${escapeHTML(st.name)}</option>
+                      `).join('')}
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    data-action="simulate-class-votes"
+                    class="px-2 py-1 rounded-lg bg-[#FF5A36] text-white text-[11px] font-extrabold hover:bg-[#E84522] shrink-0"
+                    title="Simula i voti di tutta la classe"
+                  >
+                    +5 Voti
+                  </button>
+                </div>
+
+                <div class="flex-1 overflow-y-auto p-3.5">
+                  ${renderStudentSlideForm(room, slide, simStudent.id, simStudent.name, true)}
+                </div>
+
+                <!-- Reazioni Rapide -->
+                <div class="bg-white border-t border-slate-200 px-3 py-2 flex items-center justify-around">
+                  ${REACTION_EMOJIS.map(em => `
+                    <button
+                      type="button"
+                      data-action="send-reaction"
+                      data-emoji="${em}"
+                      class="w-9 h-9 rounded-xl hover:bg-orange-50 active:scale-125 transition text-lg flex items-center justify-center"
+                    >${em}</button>
+                  `).join('')}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderEditorView() {
+        const room = store.getRoom(appState.roomCode);
+        if (!room) {
+          appState.view = 'home';
+          return renderHomeView();
+        }
+        const activeIdx = Math.min(Math.max(0, room.activeSlideIndex || 0), room.slides.length - 1);
+        const slide = room.slides[activeIdx];
+        const connectedCount = store.sync.getConnectedCount();
+        const pane = appState.mobileEditorPane || 'edit';
+
+        // Pannello Destro: Configurazione Contenuto o Tema
+        let rightPanelHtml = '';
+        if (appState.editorTab === 'theme') {
+          rightPanelHtml = `
+            <div class="space-y-5">
+              <div>
+                <label class="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-2">Tema Grafico della LIM</label>
+                <div class="grid grid-cols-1 gap-2.5">
+                  ${Object.values(THEMES).map(th => `
+                    <button
+                      type="button"
+                      data-action="set-theme"
+                      data-theme="${th.id}"
+                      class="p-3 rounded-2xl border-2 text-left flex items-center justify-between transition ${
+                        room.theme === th.id ? 'border-[#FF5A36] bg-orange-50/60' : 'border-slate-200 bg-white hover:border-slate-300'
+                      }"
+                    >
+                      <span class="font-bold text-sm text-slate-900">${th.name}</span>
+                      ${room.theme === th.id ? `<span class="text-[#FF5A36] font-black">✓</span>` : ''}
+                    </button>
+                  `).join('')}
+                </div>
+              </div>
+
+              <div class="pt-4 border-t border-slate-200 space-y-2.5">
+                <label class="block text-xs font-extrabold uppercase tracking-wider text-slate-500">Gestione Risultati & Dati</label>
+                <button
+                  type="button"
+                  data-action="reset-slide-responses"
+                  class="w-full py-2.5 px-3 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 font-bold text-xs hover:bg-rose-100"
+                >
+                  Azzera Risposte di Questa Slide
+                </button>
+                <div class="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    data-action="export-csv"
+                    class="py-2.5 px-3 rounded-xl border border-slate-200 bg-white text-slate-800 font-bold text-xs hover:bg-slate-50 flex items-center justify-center gap-1.5"
+                  >
+                    ${getIcon('download', 'w-3.5 h-3.5')} Esporta CSV
+                  </button>
+                  <button
+                    type="button"
+                    data-action="export-json"
+                    class="py-2.5 px-3 rounded-xl border border-slate-200 bg-white text-slate-800 font-bold text-xs hover:bg-slate-50 flex items-center justify-center gap-1.5"
+                  >
+                    ${getIcon('download', 'w-3.5 h-3.5')} Esporta JSON
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  data-action="import-json"
+                  class="w-full py-2.5 px-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 font-bold text-xs hover:bg-slate-100 flex items-center justify-center gap-1.5"
+                >
+                  ${getIcon('upload', 'w-3.5 h-3.5')} Carica File Lezione (.json)
+                </button>
+              </div>
+            </div>
+          `;
+        } else {
+          // Tab Contenuto
+          let specificEditorHtml = '';
+
+          if (slide.type === 'wordcloud') {
+            specificEditorHtml = `
+              <div>
+                <label class="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">Numero massimo di parole per studente</label>
+                <select
+                  data-action="edit-slide-field"
+                  data-field="maxWords"
+                  class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white font-bold text-sm"
+                >
+                  ${[1, 2, 3, 4, 5].map(n => `<option value="${n}" ${(slide.maxWords || 3) === n ? 'selected' : ''}>${n} ${n === 1 ? 'parola' : 'parole'}</option>`).join('')}
+                </select>
+              </div>
+            `;
+          } else if (slide.type === 'multiple_choice') {
+            specificEditorHtml = `
+              <div class="space-y-2.5">
+                <label class="block text-xs font-extrabold uppercase tracking-wider text-slate-500">Opzioni di Risposta</label>
+                ${(slide.options || []).map((opt, idx) => `
+                  <div class="flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-lg text-white text-xs font-black flex items-center justify-center shrink-0" style="background:${CHART_PALETTE[idx % CHART_PALETTE.length]}">
+                      ${String.fromCharCode(65 + idx)}
+                    </span>
+                    <input
+                      type="text"
+                      value="${escapeHTML(opt.text)}"
+                      data-action="edit-option-text"
+                      data-option-id="${escapeHTML(opt.id)}"
+                      class="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-sm font-medium bg-white"
+                    />
+                    ${(slide.options || []).length > 2 ? `
+                      <button type="button" data-action="remove-option" data-option-id="${escapeHTML(opt.id)}" class="p-1.5 text-slate-400 hover:text-rose-600">✕</button>
+                    ` : ''}
+                  </div>
+                `).join('')}
+                <button type="button" data-action="add-option" class="w-full py-2 rounded-xl border-2 border-dashed border-slate-300 text-xs font-extrabold text-slate-600 hover:border-[#FF5A36] hover:text-[#FF5A36]">
+                  + Aggiungi Opzione
+                </button>
+              </div>
+            `;
+          } else if (slide.type === 'scales') {
+            specificEditorHtml = `
+              <div class="space-y-3">
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="block text-[11px] font-bold text-slate-500 mb-1">Etichetta 1 (Min)</label>
+                    <input type="text" value="${escapeHTML(slide.minLabel || '')}" data-action="edit-slide-field" data-field="minLabel" class="w-full px-2.5 py-2 rounded-xl border border-slate-200 text-xs font-medium bg-white" />
+                  </div>
+                  <div>
+                    <label class="block text-[11px] font-bold text-slate-500 mb-1">Etichetta 5 (Max)</label>
+                    <input type="text" value="${escapeHTML(slide.maxLabel || '')}" data-action="edit-slide-field" data-field="maxLabel" class="w-full px-2.5 py-2 rounded-xl border border-slate-200 text-xs font-medium bg-white" />
+                  </div>
+                </div>
+                <label class="block text-xs font-extrabold uppercase tracking-wider text-slate-500">Affermazioni da Valutare</label>
+                ${(slide.statements || []).map((st) => `
+                  <div class="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value="${escapeHTML(st.text)}"
+                      data-action="edit-statement-text"
+                      data-stid="${escapeHTML(st.id)}"
+                      class="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-sm font-medium bg-white"
+                    />
+                    ${(slide.statements || []).length > 1 ? `
+                      <button type="button" data-action="remove-statement" data-stid="${escapeHTML(st.id)}" class="p-1.5 text-slate-400 hover:text-rose-600">✕</button>
+                    ` : ''}
+                  </div>
+                `).join('')}
+                <button type="button" data-action="add-statement" class="w-full py-2 rounded-xl border-2 border-dashed border-slate-300 text-xs font-extrabold text-slate-600 hover:border-[#FF5A36] hover:text-[#FF5A36]">
+                  + Aggiungi Affermazione
+                </button>
+              </div>
+            `;
+          } else if (slide.type === 'ranking') {
+            specificEditorHtml = `
+              <div class="space-y-2.5">
+                <label class="block text-xs font-extrabold uppercase tracking-wider text-slate-500">Elementi da Ordinare</label>
+                ${(slide.items || []).map((it, idx) => `
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-black text-slate-400 w-5">${idx + 1}.</span>
+                    <input
+                      type="text"
+                      value="${escapeHTML(it.text)}"
+                      data-action="edit-rank-item"
+                      data-item-id="${escapeHTML(it.id)}"
+                      class="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-sm font-medium bg-white"
+                    />
+                    ${(slide.items || []).length > 2 ? `
+                      <button type="button" data-action="remove-rank-item" data-item-id="${escapeHTML(it.id)}" class="p-1.5 text-slate-400 hover:text-rose-600">✕</button>
+                    ` : ''}
+                  </div>
+                `).join('')}
+                <button type="button" data-action="add-rank-item" class="w-full py-2 rounded-xl border-2 border-dashed border-slate-300 text-xs font-extrabold text-slate-600 hover:border-[#FF5A36] hover:text-[#FF5A36]">
+                  + Aggiungi Elemento
+                </button>
+              </div>
+            `;
+          } else if (slide.type === 'quiz') {
+            specificEditorHtml = `
+              <div class="space-y-3">
+                <div>
+                  <label class="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1">Durata Timer (secondi)</label>
+                  <select data-action="edit-quiz-duration" class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-bold text-sm">
+                    ${[15, 20, 25, 30, 45, 60].map(sec => `<option value="${sec}" ${(slide.duration || 25) === sec ? 'selected' : ''}>${sec} secondi</option>`).join('')}
+                  </select>
+                </div>
+                <label class="block text-xs font-extrabold uppercase tracking-wider text-slate-500">Risposte (spunta quella corretta ✓)</label>
+                ${(slide.options || []).map((opt) => `
+                  <div class="flex items-center gap-2">
+                    <button
+                      type="button"
+                      data-action="toggle-quiz-correct"
+                      data-option-id="${escapeHTML(opt.id)}"
+                      title="Segna come risposta corretta"
+                      class="w-7 h-7 rounded-lg font-black text-xs flex items-center justify-center shrink-0 transition ${
+                        opt.isCorrect ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500 hover:bg-slate-300'
+                      }"
+                    >✓</button>
+                    <input
+                      type="text"
+                      value="${escapeHTML(opt.text)}"
+                      data-action="edit-option-text"
+                      data-option-id="${escapeHTML(opt.id)}"
+                      class="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-sm font-medium bg-white"
+                    />
+                  </div>
+                `).join('')}
+              </div>
+            `;
+          }
+
+          rightPanelHtml = `
+            <div class="space-y-4">
+              <div>
+                <label class="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">Domanda / Titolo Slide</label>
+                <textarea
+                  rows="2"
+                  data-action="edit-slide-field"
+                  data-field="question"
+                  class="w-full px-3 py-2.5 rounded-xl border border-slate-200 font-bold text-sm text-slate-900 bg-white focus:border-[#FF5A36] focus:outline-none"
+                >${escapeHTML(slide.question)}</textarea>
+              </div>
+              <div>
+                <label class="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">Istruzioni per gli Studenti</label>
+                <input
+                  type="text"
+                  value="${escapeHTML(slide.subtitle || '')}"
+                  data-action="edit-slide-field"
+                  data-field="subtitle"
+                  class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-700 bg-white focus:border-[#FF5A36] focus:outline-none"
+                />
+              </div>
+              ${specificEditorHtml}
+            </div>
+          `;
+        }
+
+        return `
+          <div class="h-screen flex flex-col overflow-hidden">
+            <!-- Topbar Editor -->
+            <header class="h-16 bg-white border-b border-slate-200 px-4 flex items-center justify-between gap-3 shrink-0 z-20">
+              <div class="flex items-center gap-3 min-w-0">
+                <button
+                  type="button"
+                  data-action="go-home"
+                  class="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 shrink-0"
+                  title="Torna alla Home"
+                >
+                  ${getIcon('arrowLeft', 'w-4 h-4')}
+                </button>
+                <input
+                  type="text"
+                  value="${escapeHTML(room.title)}"
+                  data-action="edit-room-title"
+                  class="font-display font-extrabold text-base sm:text-lg text-slate-900 bg-transparent border-b-2 border-transparent hover:border-slate-200 focus:border-[#FF5A36] focus:outline-none px-1 py-0.5 truncate max-w-[200px] sm:max-w-xs"
+                />
+                <button
+                  type="button"
+                  data-action="show-qr-modal"
+                  class="hidden md:inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 text-white text-xs font-extrabold hover:bg-slate-800 shrink-0"
+                >
+                  ${getIcon('qr', 'w-3.5 h-3.5 text-amber-300')}
+                  Codice: <span class="tracking-wider text-amber-300">${escapeHTML(room.code)}</span>
+                </button>
+              </div>
+
+              <div class="flex items-center gap-2 shrink-0">
+                <span class="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold ${
+                  store.sync.status === 'online'
+                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                    : 'bg-amber-50 text-amber-800 border border-amber-200'
+                }">
+                  <span class="w-2 h-2 rounded-full ${store.sync.status === 'online' ? 'bg-emerald-500' : 'bg-amber-500'}"></span>
+                  ${store.sync.status === 'online' ? `Online • ${connectedCount} connessi` : 'Locale'}
+                </span>
+
+                <button
+                  type="button"
+                  data-action="toggle-phone-sim"
+                  class="px-3 py-2 rounded-xl border text-xs font-extrabold flex items-center gap-1.5 transition ${
+                    appState.showPhoneSim
+                      ? 'bg-slate-900 text-white border-slate-900'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                  }"
+                >
+                  ${getIcon('phone', 'w-4 h-4')}
+                  <span class="hidden sm:inline">Telefono Test</span>
+                </button>
+
+                <button
+                  type="button"
+                  data-action="open-stage"
+                  data-code="${escapeHTML(room.code)}"
+                  class="btn-tactile px-4 py-2 rounded-xl bg-[#FF5A36] text-white font-display font-extrabold text-sm flex items-center gap-1.5"
+                >
+                  ${getIcon('play', 'w-4 h-4')} Proietta LIM
+                </button>
+              </div>
+            </header>
+
+            <!-- Barra Schede per schermi medi/piccoli o finestra affiancata -->
+            <div class="lg:hidden grid grid-cols-3 gap-1.5 p-2 bg-slate-100 border-b border-slate-200 shrink-0">
+              <button
+                type="button"
+                data-action="set-mobile-pane"
+                data-pane="slides"
+                class="py-2 px-2 rounded-xl text-xs font-extrabold transition ${pane === 'slides' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600'}"
+              >1. Slide (${room.slides.length})</button>
+              <button
+                type="button"
+                data-action="set-mobile-pane"
+                data-pane="edit"
+                class="py-2 px-2 rounded-xl text-xs font-extrabold transition ${pane === 'edit' ? 'bg-[#FF5A36] text-white shadow-sm' : 'text-slate-600'}"
+              >2. Modifica Slide</button>
+              <button
+                type="button"
+                data-action="set-mobile-pane"
+                data-pane="preview"
+                class="py-2 px-2 rounded-xl text-xs font-extrabold transition ${pane === 'preview' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600'}"
+              >3. Anteprima</button>
+            </div>
+
+            <!-- Workspace a 3 Colonne -->
+            <div class="flex-1 flex overflow-hidden">
+              <!-- Colonna 1: Elenco Slide -->
+              <aside class="${pane === 'slides' ? 'flex w-full' : 'hidden'} lg:flex lg:w-60 bg-white border-r border-slate-200 flex-col shrink-0">
+                <div class="p-3 border-b border-slate-100">
+                  <div class="relative">
+                    <button
+                      type="button"
+                      data-action="toggle-add-slide-menu"
+                      class="btn-tactile w-full py-2.5 px-3 rounded-xl bg-slate-900 text-white font-bold text-xs flex items-center justify-center gap-1.5"
+                    >
+                      ${getIcon('plus', 'w-4 h-4')} Aggiungi Slide
+                    </button>
+                    <div id="add-slide-dropdown" class="hidden absolute left-0 right-0 mt-2 bg-white rounded-2xl border border-slate-200 shadow-xl p-1.5 z-40 space-y-1">
+                      ${Object.values(SLIDE_TYPES).map(st => `
+                        <button
+                          type="button"
+                          data-action="add-slide"
+                          data-slide-type="${st.id}"
+                          class="w-full text-left px-2.5 py-2 rounded-xl hover:bg-orange-50 flex items-center gap-2.5 transition"
+                        >
+                          <span class="p-1.5 rounded-lg border ${st.badgeBg}">${getIcon(st.id, 'w-3.5 h-3.5')}</span>
+                          <span class="text-xs font-bold text-slate-800">${st.label}</span>
+                        </button>
+                      `).join('')}
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex-1 overflow-y-auto p-2.5 space-y-2">
+                  ${room.slides.map((sl, idx) => {
+                    const isActive = idx === activeIdx;
+                    const meta = SLIDE_TYPES[sl.type] || SLIDE_TYPES.multiple_choice;
+                    return `
+                      <div
+                        data-action="select-slide"
+                        data-index="${idx}"
+                        class="group p-2.5 rounded-2xl border-2 cursor-pointer transition ${
+                          isActive
+                            ? 'border-[#FF5A36] bg-orange-50/70'
+                            : 'border-slate-200/80 bg-white hover:border-slate-300'
+                        }"
+                      >
+                        <div class="flex items-center justify-between gap-1 mb-1">
+                          <span class="text-[11px] font-black text-slate-500">#${idx + 1} • ${meta.shortLabel}</span>
+                          <div class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition">
+                            <button type="button" data-action="move-slide" data-index="${idx}" data-dir="-1" ${idx === 0 ? 'disabled' : ''} class="p-1 text-[10px] hover:bg-slate-200 rounded disabled:opacity-30">▲</button>
+                            <button type="button" data-action="move-slide" data-index="${idx}" data-dir="1" ${idx === room.slides.length - 1 ? 'disabled' : ''} class="p-1 text-[10px] hover:bg-slate-200 rounded disabled:opacity-30">▼</button>
+                            ${room.slides.length > 1 ? `
+                              <button type="button" data-action="delete-slide" data-index="${idx}" class="p-1 text-[10px] text-rose-600 hover:bg-rose-100 rounded">✕</button>
+                            ` : ''}
+                          </div>
+                        </div>
+                        <p class="text-xs font-bold text-slate-800 line-clamp-2 leading-snug">${escapeHTML(sl.question)}</p>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              </aside>
+
+              <!-- Colonna 2: Anteprima Palco + Telefono Test -->
+              <main class="${pane === 'preview' ? 'flex' : 'hidden'} lg:flex flex-1 overflow-y-auto p-4 sm:p-6 flex-col xl:flex-row items-center xl:items-stretch justify-center gap-6 ${(THEMES[room.theme] || THEMES.cream).stageBg}">
+                <div class="flex-1 w-full max-w-4xl flex flex-col min-h-[420px]">
+                  ${renderStageSlideContent(room, slide, true)}
+                </div>
+                ${appState.showPhoneSim ? renderPhoneSimulator(room, slide) : ''}
+              </main>
+
+              <!-- Colonna 3: Ispettore Impostazioni -->
+              <aside class="${pane === 'edit' ? 'flex w-full' : 'hidden'} lg:flex lg:w-80 bg-white border-l border-slate-200 flex-col shrink-0">
+                <div class="grid grid-cols-2 border-b border-slate-200 p-1.5 gap-1.5 bg-slate-50">
+                  <button
+                    type="button"
+                    data-action="set-editor-tab"
+                    data-tab="content"
+                    class="py-2 rounded-xl text-xs font-extrabold transition ${
+                      appState.editorTab === 'content' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                    }"
+                  >Contenuto</button>
+                  <button
+                    type="button"
+                    data-action="set-editor-tab"
+                    data-tab="theme"
+                    class="py-2 rounded-xl text-xs font-extrabold transition ${
+                      appState.editorTab === 'theme' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                    }"
+                  >Tema & Esporta</button>
+                </div>
+                <div class="flex-1 overflow-y-auto p-4">
+                  ${rightPanelHtml}
+                </div>
+              </aside>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderStageView() {
+        const room = store.getRoom(appState.roomCode);
+        if (!room) {
+          appState.view = 'home';
+          return renderHomeView();
+        }
+        const activeIdx = Math.min(Math.max(0, room.activeSlideIndex || 0), room.slides.length - 1);
+        const slide = room.slides[activeIdx];
+        const theme = THEMES[room.theme] || THEMES.cream;
+        const connectedCount = store.sync.getConnectedCount();
+        const qaCount = (room.qa || []).length;
+
+        return `
+          <div class="min-h-screen flex flex-col ${theme.stageBg} transition-colors">
+            <!-- Barra LIM Superiore -->
+            <header class="px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3 border-b ${theme.isDark ? 'border-slate-800 bg-slate-950/70' : 'border-slate-200/80 bg-white/85'} backdrop-blur-md">
+              <div class="flex items-center gap-3">
+                <button
+                  type="button"
+                  data-action="open-editor"
+                  data-code="${escapeHTML(room.code)}"
+                  class="btn-tactile px-3.5 py-2 rounded-xl bg-white text-slate-900 border border-slate-300 text-xs font-extrabold flex items-center gap-1.5 hover:bg-slate-50"
+                >
+                  ${getIcon('arrowLeft', 'w-4 h-4')} Modifica Slide
+                </button>
+
+                <button
+                  type="button"
+                  data-action="show-qr-modal"
+                  class="px-4 py-2 rounded-2xl bg-slate-900 text-white flex items-center gap-2.5 shadow-sm hover:bg-slate-800 transition"
+                >
+                  ${getIcon('qr', 'w-4 h-4 text-amber-300')}
+                  <span class="text-xs font-bold text-slate-300 hidden sm:inline">Entra con codice:</span>
+                  <span class="font-display font-black text-base sm:text-lg tracking-widest text-amber-300">${escapeHTML(room.code)}</span>
+                </button>
+
+                <span class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold ${
+                  store.sync.status === 'online'
+                    ? 'bg-emerald-500/15 text-emerald-600 border border-emerald-500/30'
+                    : 'bg-amber-500/15 text-amber-600 border border-amber-500/30'
+                }">
+                  <span class="w-2 h-2 rounded-full ${store.sync.status === 'online' ? 'bg-emerald-500' : 'bg-amber-500'}"></span>
+                  ${store.sync.status === 'online' ? `Online • ${connectedCount} studenti` : 'Locale'}
+                </span>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <!-- Accessibilità Dimensione Testo LIM -->
+                <div class="inline-flex rounded-xl border ${theme.pillBg} p-0.5">
+                  ${['A', 'A+', 'A++'].map((lbl, idx) => `
+                    <button
+                      type="button"
+                      data-action="set-font-scale"
+                      data-scale="${idx}"
+                      class="px-2.5 py-1 rounded-lg text-xs font-black transition ${
+                        appState.fontScale === idx ? 'bg-[#FF5A36] text-white' : ''
+                      }"
+                    >${lbl}</button>
+                  `).join('')}
+                </div>
+
+                <button
+                  type="button"
+                  data-action="toggle-qa-drawer"
+                  class="px-3 py-2 rounded-xl border ${theme.pillBg} text-xs font-extrabold flex items-center gap-1.5"
+                >
+                  ${getIcon('qa', 'w-4 h-4')} Q&A (${qaCount})
+                </button>
+
+                <button
+                  type="button"
+                  data-action="toggle-phone-sim"
+                  class="px-3 py-2 rounded-xl border ${theme.pillBg} text-xs font-extrabold flex items-center gap-1.5"
+                >
+                  ${getIcon('phone', 'w-4 h-4')} <span class="hidden sm:inline">Test</span>
+                </button>
+
+                <button
+                  type="button"
+                  data-action="toggle-fullscreen"
+                  class="p-2 rounded-xl border ${theme.pillBg} hover:opacity-80"
+                  title="Schermo Intero LIM"
+                >
+                  ${getIcon('fullscreen', 'w-4 h-4')}
+                </button>
+              </div>
+            </header>
+
+            <!-- Palco Principale -->
+            <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-5 flex flex-col lg:flex-row items-center lg:items-stretch justify-center gap-6">
+              <div class="flex-1 w-full flex flex-col min-h-[440px]">
+                ${renderStageSlideContent(room, slide, false)}
+              </div>
+              ${appState.showPhoneSim ? renderPhoneSimulator(room, slide) : ''}
+            </main>
+
+            <!-- Barra Navigazione Slide -->
+            <footer class="px-4 sm:px-6 py-3 flex items-center justify-between border-t ${theme.isDark ? 'border-slate-800 bg-slate-950/70' : 'border-slate-200/80 bg-white/85'} backdrop-blur-md">
+              <div class="text-xs font-bold ${theme.textSecondary} truncate max-w-[200px] sm:max-w-sm">
+                ${escapeHTML(room.title)}
+              </div>
+
+              <div class="flex items-center gap-3">
+                <button
+                  type="button"
+                  data-action="prev-slide"
+                  ${activeIdx === 0 ? 'disabled' : ''}
+                  class="btn-tactile px-4 py-2 rounded-xl bg-slate-900 text-white disabled:opacity-30 font-bold text-sm flex items-center gap-1.5"
+                >
+                  ${getIcon('arrowLeft', 'w-4 h-4')} Precedente
+                </button>
+                <span class="font-display font-black text-sm ${theme.textPrimary}">
+                  ${activeIdx + 1} / ${room.slides.length}
+                </span>
+                <button
+                  type="button"
+                  data-action="next-slide"
+                  ${activeIdx === room.slides.length - 1 ? 'disabled' : ''}
+                  class="btn-tactile px-4 py-2 rounded-xl bg-[#FF5A36] text-white disabled:opacity-30 font-bold text-sm flex items-center gap-1.5"
+                >
+                  Successiva ${getIcon('arrowRight', 'w-4 h-4')}
+                </button>
+              </div>
+
+              <div class="hidden sm:block text-xs font-bold ${theme.textSecondary}">
+                Usa le frecce ← → della tastiera
+              </div>
+            </footer>
+
+            <!-- Drawer Laterale Q&A -->
+            ${appState.showQaDrawer ? `
+              <div class="fixed inset-y-0 right-0 w-full max-w-md bg-white shadow-2xl border-l border-slate-200 z-50 flex flex-col animate-pop-in">
+                <div class="p-4 border-b border-slate-200 flex items-center justify-between">
+                  <h3 class="font-display font-extrabold text-lg text-slate-900">Domande dal Pubblico (${qaCount})</h3>
+                  <button type="button" data-action="toggle-qa-drawer" class="p-2 rounded-xl hover:bg-slate-100 font-bold">✕</button>
+                </div>
+                <div class="flex-1 overflow-y-auto p-4 space-y-3">
+                  ${qaCount === 0 ? `
+                    <p class="text-sm text-slate-500 text-center py-12">Nessuna domanda inviata dagli studenti.</p>
+                  ` : (room.qa || []).map(q => `
+                    <div class="p-3.5 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-2">
+                      <p class="font-bold text-sm text-slate-900">${escapeHTML(q.text)}</p>
+                      <div class="flex items-center justify-between text-xs text-slate-500">
+                        <span>Da: <b>${escapeHTML(q.author)}</b></span>
+                        <span class="px-2 py-0.5 rounded-lg bg-amber-100 text-amber-900 font-extrabold">👍 ${q.upvotes || 0}</span>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }
+
+      function renderAudienceView() {
+        const room = store.getRoom(appState.roomCode);
+        const syncStatus = store.sync.status;
+
+        if (!room) {
+          return `
+            <div class="min-h-screen flex flex-col items-center justify-center p-6 text-center">
+              <div class="max-w-sm w-full bg-white rounded-3xl border border-slate-200 p-6 shadow-soft space-y-4">
+                ${getIcon('logo', 'w-12 h-12 mx-auto')}
+                <h1 class="font-display font-black text-2xl text-slate-900">
+                  ${syncStatus === 'connecting' ? 'Collegamento alla LIM...' : 'Aula non trovata'}
+                </h1>
+                <p class="text-sm text-slate-600">
+                  ${syncStatus === 'connecting'
+                    ? `Stiamo cercando l’aula con codice <b>${escapeHTML(appState.roomCode)}</b>. Assicurati che l’insegnante abbia aperto la lezione.`
+                    : `Impossibile raggiungere il codice <b>${escapeHTML(appState.roomCode)}</b>. Controlla il numero sulla LIM e riprova.`}
+                </p>
+                <div class="flex gap-2">
+                  <button type="button" data-action="reconnect-client" class="btn-tactile flex-1 py-3 rounded-2xl bg-[#FF5A36] text-white font-bold text-sm">
+                    Riconnetti
+                  </button>
+                  <button type="button" data-action="go-home" class="py-3 px-4 rounded-2xl border border-slate-200 font-bold text-sm text-slate-700">
+                    Indietro
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+
+        const activeIdx = Math.min(Math.max(0, room.activeSlideIndex || 0), room.slides.length - 1);
+        const slide = room.slides[activeIdx];
+        const qaList = room.qa || [];
+
+        return `
+          <div class="min-h-screen flex flex-col max-w-lg mx-auto bg-[#FAF7F2] shadow-xl">
+            <!-- Header Studente -->
+            <header class="bg-slate-900 text-white px-4 py-3 flex items-center justify-between gap-2 sticky top-0 z-20">
+              <div class="flex items-center gap-2 min-w-0">
+                <button type="button" data-action="go-home" class="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white">
+                  ${getIcon('arrowLeft', 'w-4 h-4')}
+                </button>
+                <div class="truncate">
+                  <div class="text-[11px] font-extrabold text-amber-300 tracking-wider">AULA ${escapeHTML(room.code)}</div>
+                  <div class="text-xs font-bold text-slate-200 truncate">${escapeHTML(room.title)}</div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-1.5 shrink-0">
+                <div class="inline-flex rounded-lg bg-slate-800 p-0.5">
+                  ${['A', 'A+', 'A++'].map((lbl, idx) => `
+                    <button
+                      type="button"
+                      data-action="set-font-scale"
+                      data-scale="${idx}"
+                      class="px-2 py-0.5 rounded text-[11px] font-black ${appState.fontScale === idx ? 'bg-[#FF5A36] text-white' : 'text-slate-300'}"
+                    >${lbl}</button>
+                  `).join('')}
+                </div>
+              </div>
+            </header>
+
+            <!-- Barra Nome Studente & Tab Vota / Q&A -->
+            <div class="bg-white border-b border-slate-200 px-4 py-2.5 flex items-center justify-between gap-2">
+              <input
+                type="text"
+                maxlength="24"
+                placeholder="Il tuo nome (opzionale)"
+                value="${escapeHTML(appState.studentName)}"
+                data-action="edit-student-name"
+                class="text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-[#FF5A36] focus:outline-none w-40"
+              />
+              <div class="inline-flex rounded-xl bg-slate-100 p-1">
+                <button
+                  type="button"
+                  data-action="set-audience-tab"
+                  data-tab="vote"
+                  class="px-3 py-1 rounded-lg text-xs font-extrabold ${appState.audienceSubTab === 'vote' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}"
+                >Vota</button>
+                <button
+                  type="button"
+                  data-action="set-audience-tab"
+                  data-tab="qa"
+                  class="px-3 py-1 rounded-lg text-xs font-extrabold ${appState.audienceSubTab === 'qa' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}"
+                >Domande (${qaList.length})</button>
+              </div>
+            </div>
+
+            <!-- Contenuto Principale -->
+            <main class="flex-1 p-4 overflow-y-auto">
+              ${appState.audienceSubTab === 'vote'
+                ? renderStudentSlideForm(room, slide, participantDeviceId, appState.studentName || 'Studente', false)
+                : `
+                  <div class="space-y-4">
+                    <form data-action="submit-qa-form" class="bg-white p-4 rounded-2xl border border-slate-200 space-y-2.5">
+                      <label class="block text-xs font-extrabold uppercase tracking-wider text-slate-500">Fai una domanda all’insegnante</label>
+                      <textarea
+                        name="qaText"
+                        rows="2"
+                        maxlength="180"
+                        placeholder="Scrivi qui il tuo dubbio o la tua domanda..."
+                        class="w-full p-3 rounded-xl border border-slate-200 text-sm font-medium focus:border-[#FF5A36] focus:outline-none"
+                      ></textarea>
+                      <button type="submit" class="btn-tactile w-full py-2.5 rounded-xl bg-slate-900 text-white font-bold text-sm">
+                        Invia Domanda
+                      </button>
+                    </form>
+
+                    <div class="space-y-2.5">
+                      ${qaList.map(q => {
+                        const liked = (q.upvotedBy || []).includes(participantDeviceId);
+                        return `
+                          <div class="p-3.5 rounded-2xl bg-white border border-slate-200 flex items-start justify-between gap-3">
+                            <div>
+                              <p class="text-sm font-bold text-slate-900">${escapeHTML(q.text)}</p>
+                              <span class="text-[11px] text-slate-500">Da: ${escapeHTML(q.author)}</span>
+                            </div>
+                            <button
+                              type="button"
+                              data-action="upvote-qa"
+                              data-qaid="${escapeHTML(q.id)}"
+                              class="px-2.5 py-1.5 rounded-xl border text-xs font-extrabold shrink-0 ${
+                                liked ? 'bg-amber-200 border-amber-400 text-slate-950' : 'bg-slate-50 border-slate-200 text-slate-600'
+                              }"
+                            >👍 ${q.upvotes || 0}</button>
+                          </div>
+                        `;
+                      }).join('')}
+                    </div>
+                  </div>
+                `}
+            </main>
+
+            <!-- Barra Reazioni Fissa in Basso -->
+            <footer class="bg-white border-t border-slate-200 px-4 py-2.5 flex items-center justify-around sticky bottom-0 z-20">
+              ${REACTION_EMOJIS.map(em => `
+                <button
+                  type="button"
+                  data-action="send-reaction"
+                  data-emoji="${em}"
+                  class="w-11 h-11 rounded-2xl bg-slate-50 hover:bg-orange-50 active:scale-125 transition text-xl flex items-center justify-center border border-slate-200/70"
+                >${em}</button>
+              `).join('')}
+            </footer>
+          </div>
+        `;
+      }
+
+      // =========================================================================
+      // 11. SMART RENDERING CON PRESERVAZIONE DEL FOCUS E DEL CURSORE
+      // =========================================================================
+      function renderApp() {
+        const root = document.getElementById('app');
+        if (!root) return;
+
+        // Salva stato focus corrente prima di aggiornare il DOM
+        const activeEl = document.activeElement;
+        let focusSelector = null;
+        let selStart = null;
+        let selEnd = null;
+
+        if (activeEl && root.contains(activeEl) && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+          if (activeEl.dataset.action === 'edit-room-title') {
+            focusSelector = '[data-action="edit-room-title"]';
+          } else if (activeEl.dataset.action === 'edit-slide-field' && activeEl.dataset.field) {
+            focusSelector = `[data-action="edit-slide-field"][data-field="${activeEl.dataset.field}"]`;
+          } else if (activeEl.dataset.action === 'edit-option-text' && activeEl.dataset.optionId) {
+            focusSelector = `[data-action="edit-option-text"][data-option-id="${activeEl.dataset.optionId}"]`;
+          } else if (activeEl.dataset.action === 'edit-statement-text' && activeEl.dataset.stid) {
+            focusSelector = `[data-action="edit-statement-text"][data-stid="${activeEl.dataset.stid}"]`;
+          } else if (activeEl.dataset.action === 'edit-rank-item' && activeEl.dataset.itemId) {
+            focusSelector = `[data-action="edit-rank-item"][data-item-id="${activeEl.dataset.itemId}"]`;
+          } else if (activeEl.dataset.draftKey && activeEl.dataset.wordIndex !== undefined) {
+            focusSelector = `[data-draft-key="${activeEl.dataset.draftKey}"][data-word-index="${activeEl.dataset.wordIndex}"]`;
+          } else if (activeEl.dataset.openDraft) {
+            focusSelector = `[data-open-draft="${activeEl.dataset.openDraft}"]`;
+          } else if (activeEl.dataset.action === 'edit-student-name') {
+            focusSelector = '[data-action="edit-student-name"]';
+          }
+          try {
+            selStart = activeEl.selectionStart;
+            selEnd = activeEl.selectionEnd;
+          } catch (_) {}
+        }
+
+        let html = '';
+        if (appState.view === 'home') {
+          html = renderHomeView();
+        } else if (appState.view === 'editor') {
+          html = renderEditorView();
+        } else if (appState.view === 'stage') {
+          html = renderStageView();
+        } else if (appState.view === 'audience') {
+          html = renderAudienceView();
+        }
+
+        root.innerHTML = html;
+
+        // Ripristina focus e posizione cursore se l'utente stava digitando
+        if (focusSelector) {
+          const restored = root.querySelector(focusSelector);
+          if (restored) {
+            restored.focus();
+            if (typeof selStart === 'number' && typeof restored.setSelectionRange === 'function') {
+              try { restored.setSelectionRange(selStart, selEnd); } catch (_) {}
+            }
+          }
+        }
+
+        initWordCloudObserver();
+      }
+
+      // =========================================================================
+      // 12. MODALI (QR Code & Spotlight Post-it) E GESTIONE EVENTI UNIFICATA
+      // =========================================================================
+      function openModal(innerHtml) {
+        const modal = document.getElementById('modal-container');
+        if (!modal) return;
+        modal.innerHTML = innerHtml;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+
+      function closeModal() {
+        const modal = document.getElementById('modal-container');
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        modal.innerHTML = '';
+      }
+
+      function openQrModal(code) {
+        const baseUrl = window.location.href.split('#')[0];
+        const joinUrl = `${baseUrl}#join=${code}`;
+        const qrSvg = generateLocalQRSVG(joinUrl, 210);
+
+        openModal(`
+          <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl text-center space-y-5 animate-pop-in relative">
+            <button type="button" data-action="close-modal" class="absolute top-4 right-4 w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 font-black text-slate-700">✕</button>
+            <div>
+              <span class="inline-block px-3 py-1 rounded-xl bg-orange-100 text-[#FF5A36] text-xs font-extrabold uppercase tracking-wider mb-2">
+                Accesso Smartphone Studenti
+              </span>
+              <h3 class="font-display font-black text-2xl text-slate-900">Inquadra il QR Code</h3>
+              <p class="text-sm text-slate-600 mt-1">Oppure apri il sito e digita il codice stanza:</p>
+            </div>
+
+            ${qrSvg}
+
+            <div class="p-3.5 rounded-2xl bg-slate-900 text-amber-300 font-display font-black text-3xl tracking-[0.25em]">
+              ${escapeHTML(code)}
+            </div>
+
+            <div class="flex items-center gap-2">
+              <input id="qr-join-link" type="text" readonly value="${escapeHTML(joinUrl)}" class="flex-1 px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-mono text-slate-700" />
+              <button type="button" data-action="copy-join-link" class="btn-tactile px-4 py-2.5 rounded-xl bg-[#FF5A36] text-white font-bold text-xs flex items-center gap-1.5 shrink-0">
+                ${getIcon('copy', 'w-3.5 h-3.5')} Copia Link
+              </button>
+            </div>
+          </div>
+        `);
+      }
+
+      function navigateTo(view, code = null) {
+        appState.view = view;
+        appState.roomCode = code;
+
+        if (view === 'home') {
+          store.sync.stop();
+          try { history.replaceState(null, '', window.location.pathname + window.location.search); } catch (_) {}
+        } else if (view === 'editor' || view === 'stage') {
+          store.sync.startHost(code);
+        } else if (view === 'audience') {
+          store.sync.connectClient(code);
+          try { history.replaceState(null, '', `#join=${code}`); } catch (_) {}
+        }
+        renderApp();
+      }
+
+      // Event Delegation Globale (Click, Input, Change, Submit, Keyboard)
+      document.addEventListener('click', (e) => {
+        const modal = document.getElementById('modal-container');
+        if (modal && !modal.classList.contains('hidden') && e.target === modal) {
+          closeModal();
+          return;
+        }
+
+        const btn = e.target.closest('[data-action]');
+        if (!btn) {
+          const dd = document.getElementById('add-slide-dropdown');
+          if (dd && !dd.classList.contains('hidden') && !e.target.closest('#add-slide-dropdown')) {
+            dd.classList.add('hidden');
+          }
+          return;
+        }
+
+        const action = btn.dataset.action;
+
+        if (action === 'close-modal') {
+          closeModal();
+        } else if (action === 'go-home') {
+          navigateTo('home');
+        } else if (action === 'create-room') {
+          const room = store.createRoom();
+          navigateTo('editor', room.code);
+        } else if (action === 'open-demo') {
+          const demoCode = store.rooms['482910'] ? '482910' : Object.keys(store.rooms)[0];
+          navigateTo('stage', demoCode);
+        } else if (action === 'create-template') {
+          const room = store.createFromTemplate(btn.dataset.template);
+          navigateTo('editor', room.code);
+        } else if (action === 'delete-room') {
+          store.deleteRoom(btn.dataset.code);
+          showToast('Lezione eliminata', 'info');
+        } else if (action === 'open-editor') {
+          navigateTo('editor', btn.dataset.code);
+        } else if (action === 'open-stage') {
+          navigateTo('stage', btn.dataset.code);
+        } else if (action === 'show-qr-modal') {
+          if (appState.roomCode) openQrModal(appState.roomCode);
+        } else if (action === 'copy-join-link') {
+          const inp = document.getElementById('qr-join-link');
+          if (inp) {
+            inp.select();
+            try {
+              document.execCommand('copy');
+              showToast('Link copiato negli appunti!', 'success');
+            } catch (_) {
+              showToast('Seleziona e copia il link manualmente', 'warning');
+            }
+          }
+        } else if (action === 'toggle-phone-sim') {
+          appState.showPhoneSim = !appState.showPhoneSim;
+          renderApp();
+        } else if (action === 'toggle-qa-drawer') {
+          appState.showQaDrawer = !appState.showQaDrawer;
+          renderApp();
+        } else if (action === 'toggle-fullscreen') {
+          if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen?.().catch(() => {});
+          } else {
+            document.exitFullscreen?.().catch(() => {});
+          }
+        } else if (action === 'set-font-scale') {
+          appState.fontScale = Number(btn.dataset.scale || 0);
+          renderApp();
+        } else if (action === 'set-editor-tab') {
+          appState.editorTab = btn.dataset.tab;
+          renderApp();
+        } else if (action === 'set-mobile-pane') {
+          appState.mobileEditorPane = btn.dataset.pane;
+          renderApp();
+        } else if (action === 'set-audience-tab') {
+          appState.audienceSubTab = btn.dataset.tab;
+          renderApp();
+        } else if (action === 'reconnect-client') {
+          if (appState.roomCode) {
+            store.sync.connectClient(appState.roomCode);
+            showToast('Riconnessione in corso...', 'info');
+          }
+        } else if (action === 'toggle-add-slide-menu') {
+          const dd = document.getElementById('add-slide-dropdown');
+          if (dd) dd.classList.toggle('hidden');
+        } else if (action === 'add-slide') {
+          const type = btn.dataset.slideType;
+          appState.mobileEditorPane = 'edit';
+          store.updateRoom(appState.roomCode, (r) => {
+            const newSl = createSlideTemplate(type);
+            r.slides.push(newSl);
+            r.activeSlideIndex = r.slides.length - 1;
+          });
+        } else if (action === 'select-slide') {
+          const idx = Number(btn.dataset.index || 0);
+          appState.mobileEditorPane = 'edit';
+          store.updateRoom(appState.roomCode, (r) => {
+            r.activeSlideIndex = idx;
+          });
+        } else if (action === 'move-slide') {
+          e.stopPropagation();
+          const idx = Number(btn.dataset.index);
+          const dir = Number(btn.dataset.dir);
+          store.updateRoom(appState.roomCode, (r) => {
+            const target = idx + dir;
+            if (target < 0 || target >= r.slides.length) return;
+            const tmp = r.slides[idx];
+            r.slides[idx] = r.slides[target];
+            r.slides[target] = tmp;
+            r.activeSlideIndex = target;
+          });
+        } else if (action === 'delete-slide') {
+          e.stopPropagation();
+          const idx = Number(btn.dataset.index);
+          store.updateRoom(appState.roomCode, (r) => {
+            if (r.slides.length <= 1) return;
+            r.slides.splice(idx, 1);
+            r.activeSlideIndex = Math.min(r.activeSlideIndex, r.slides.length - 1);
+          });
+        } else if (action === 'prev-slide') {
+          store.updateRoom(appState.roomCode, (r) => {
+            r.activeSlideIndex = Math.max(0, (r.activeSlideIndex || 0) - 1);
+          });
+        } else if (action === 'next-slide') {
+          store.updateRoom(appState.roomCode, (r) => {
+            r.activeSlideIndex = Math.min(r.slides.length - 1, (r.activeSlideIndex || 0) + 1);
+          });
+        } else if (action === 'set-theme') {
+          store.updateRoom(appState.roomCode, (r) => {
+            r.theme = btn.dataset.theme;
+          });
+        } else if (action === 'set-chart-type') {
+          store.updateRoom(appState.roomCode, (r) => {
+            const sl = r.slides[r.activeSlideIndex];
+            if (sl) sl.chartType = btn.dataset.chart;
+          });
+        } else if (action === 'reset-slide-responses') {
+          store.updateRoom(appState.roomCode, (r) => {
+            const sl = r.slides[r.activeSlideIndex];
+            if (sl) {
+              sl.responses = {};
+              if (sl.type === 'quiz') {
+                sl.status = 'waiting';
+                sl.timeLeft = sl.duration || 25;
+              }
+            }
+          });
+          showToast('Risposte azzerate per questa slide', 'info');
+        } else if (action === 'add-option') {
+          store.updateRoom(appState.roomCode, (r) => {
+            const sl = r.slides[r.activeSlideIndex];
+            if (sl && sl.options) {
+              sl.options.push({ id: uid('opt'), text: `Opzione ${sl.options.length + 1}` });
+            }
+          });
+        } else if (action === 'remove-option') {
+          const optId = btn.dataset.optionId;
+          store.updateRoom(appState.roomCode, (r) => {
+            const sl = r.slides[r.activeSlideIndex];
+            if (sl && sl.options && sl.options.length > 2) {
+              sl.options = sl.options.filter(o => o.id !== optId);
+            }
+          });
+        } else if (action === 'add-statement') {
+          store.updateRoom(appState.roomCode, (r) => {
+            const sl = r.slides[r.activeSlideIndex];
+            if (sl && sl.statements) {
+              sl.statements.push({ id: uid('st'), text: `Nuova affermazione ${sl.statements.length + 1}` });
+            }
+          });
+        } else if (action === 'remove-statement') {
+          const stId = btn.dataset.stid;
+          store.updateRoom(appState.roomCode, (r) => {
+            const sl = r.slides[r.activeSlideIndex];
+            if (sl && sl.statements && sl.statements.length > 1) {
+              sl.statements = sl.statements.filter(s => s.id !== stId);
+            }
+          });
+        } else if (action === 'add-rank-item') {
+          store.updateRoom(appState.roomCode, (r) => {
+            const sl = r.slides[r.activeSlideIndex];
+            if (sl && sl.items) {
+              sl.items.push({ id: uid('rk'), text: `Elemento ${sl.items.length + 1}` });
+            }
+          });
+        } else if (action === 'remove-rank-item') {
+          const itemId = btn.dataset.itemId;
+          store.updateRoom(appState.roomCode, (r) => {
+            const sl = r.slides[r.activeSlideIndex];
+            if (sl && sl.items && sl.items.length > 2) {
+              sl.items = sl.items.filter(i => i.id !== itemId);
+            }
+          });
+        } else if (action === 'toggle-quiz-correct') {
+          const optId = btn.dataset.optionId;
+          store.updateRoom(appState.roomCode, (r) => {
+            const sl = r.slides[r.activeSlideIndex];
+            if (sl && sl.options) {
+              sl.options.forEach(o => { o.isCorrect = o.id === optId; });
+            }
+          });
+        } else if (action === 'quiz-start') {
+          store.updateRoom(appState.roomCode, (r) => {
+            const sl = r.slides[r.activeSlideIndex];
+            if (sl && sl.type === 'quiz') {
+              sl.timeLeft = sl.duration || 25;
+              sl.status = 'running';
+            }
+          });
+        } else if (action === 'quiz-pause') {
+          store.updateRoom(appState.roomCode, (r) => {
+            const sl = r.slides[r.activeSlideIndex];
+            if (sl && sl.type === 'quiz') sl.status = 'paused';
+          });
+        } else if (action === 'quiz-resume') {
+          store.updateRoom(appState.roomCode, (r) => {
+            const sl = r.slides[r.activeSlideIndex];
+            if (sl && sl.type === 'quiz') sl.status = 'running';
+          });
+        } else if (action === 'quiz-end') {
+          store.updateRoom(appState.roomCode, (r) => {
+            const sl = r.slides[r.activeSlideIndex];
+            if (sl && sl.type === 'quiz') {
+              sl.timeLeft = 0;
+              sl.status = 'ended';
+            }
+          });
+        } else if (action === 'quiz-reset') {
+          store.updateRoom(appState.roomCode, (r) => {
+            const sl = r.slides[r.activeSlideIndex];
+            if (sl && sl.type === 'quiz') {
+              sl.responses = {};
+              sl.timeLeft = sl.duration || 25;
+              sl.status = 'waiting';
+            }
+          });
+        } else if (action === 'open-spotlight') {
+          const text = btn.dataset.text || '';
+          const author = btn.dataset.author || 'Studente';
+          openModal(`
+            <div class="bg-white rounded-3xl max-w-xl w-full p-8 shadow-2xl border-t-8 border-t-[#FF5A36] space-y-5 animate-pop-in relative">
+              <button type="button" data-action="close-modal" class="absolute top-4 right-4 w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 font-black">✕</button>
+              <span class="inline-block px-3 py-1 rounded-xl bg-orange-100 text-[#FF5A36] text-xs font-extrabold uppercase tracking-wider">
+                Messaggio da ${escapeHTML(author)}
+              </span>
+              <p class="font-display font-extrabold text-2xl sm:text-3xl text-slate-900 leading-snug">
+                “${escapeHTML(text)}”
+              </p>
+            </div>
+          `);
+        } else if (action === 'send-reaction') {
+          store.sendReaction(appState.roomCode, btn.dataset.emoji);
+        } else if (action === 'vote-mc') {
+          const isSim = btn.dataset.sim === 'true';
+          const pid = isSim ? SIMULATED_STUDENTS[appState.simStudentIndex].id : participantDeviceId;
+          store.submitVote(appState.roomCode, btn.dataset.slideId, pid, btn.dataset.optionId, !isSim);
+          showToast('Voto inviato!', 'success');
+        } else if (action === 'vote-quiz') {
+          const isSim = btn.dataset.sim === 'true';
+          const simObj = SIMULATED_STUDENTS[appState.simStudentIndex];
+          const pid = isSim ? simObj.id : participantDeviceId;
+          const pName = isSim ? simObj.name : (appState.studentName || 'Studente');
+          const room = store.getRoom(appState.roomCode);
+          const slide = room?.slides.find(s => s.id === btn.dataset.slideId);
+          if (!slide || slide.status === 'waiting' || slide.status === 'ended') return;
+          const chosenOpt = (slide.options || []).find(o => o.id === btn.dataset.optionId);
+          const isCorrect = Boolean(chosenOpt && chosenOpt.isCorrect);
+          const dur = slide.duration || 25;
+          const left = slide.timeLeft || 0;
+          const points = isCorrect ? Math.round(500 + 500 * Math.max(0, left / dur)) : 0;
+
+          store.submitVote(appState.roomCode, slide.id, pid, {
+            optionId: btn.dataset.optionId,
+            isCorrect,
+            points,
+            name: pName
+          }, !isSim);
+          showToast('Risposta inviata al Quiz!', 'success');
+        } else if (action === 'rank-move') {
+          const key = btn.dataset.draftKey;
+          const idx = Number(btn.dataset.index);
+          const dir = Number(btn.dataset.dir);
+          const arr = appState.drafts[key];
+          if (Array.isArray(arr) && idx + dir >= 0 && idx + dir < arr.length) {
+            const tmp = arr[idx];
+            arr[idx] = arr[idx + dir];
+            arr[idx + dir] = tmp;
+            renderApp();
+          }
+        } else if (action === 'submit-ranking') {
+          const isSim = btn.dataset.sim === 'true';
+          const pid = isSim ? SIMULATED_STUDENTS[appState.simStudentIndex].id : participantDeviceId;
+          const order = appState.drafts[btn.dataset.draftKey];
+          if (Array.isArray(order)) {
+            store.submitVote(appState.roomCode, btn.dataset.slideId, pid, [...order], !isSim);
+            showToast('Classifica inviata!', 'success');
+          }
+        } else if (action === 'upvote-qa') {
+          store.toggleUpvoteQuestion(appState.roomCode, btn.dataset.qaid, participantDeviceId, true);
+        } else if (action === 'simulate-class-votes') {
+          const room = store.getRoom(appState.roomCode);
+          if (!room) return;
+          const slide = room.slides[room.activeSlideIndex];
+          if (!slide) return;
+          const sampleWords = ['Impegno', 'Collaborazione', 'Futuro', 'Lingua', 'Amicizia', 'Studio', 'Lavoro', 'Speranza'];
+
+          SIMULATED_STUDENTS.forEach((st, idx) => {
+            if (slide.type === 'wordcloud') {
+              const w1 = sampleWords[(idx * 2) % sampleWords.length];
+              const w2 = sampleWords[(idx * 2 + 1) % sampleWords.length];
+              store.submitVote(room.code, slide.id, st.id, [w1, w2], false);
+            } else if (slide.type === 'multiple_choice' && slide.options?.length) {
+              const pick = slide.options[idx % slide.options.length];
+              store.submitVote(room.code, slide.id, st.id, pick.id, false);
+            } else if (slide.type === 'scales' && slide.statements?.length) {
+              const obj = {};
+              slide.statements.forEach((s, si) => { obj[s.id] = Math.min(5, Math.max(1, 3 + ((idx + si) % 3))); });
+              store.submitVote(room.code, slide.id, st.id, obj, false);
+            } else if (slide.type === 'ranking' && slide.items?.length) {
+              const ids = slide.items.map(i => i.id);
+              const rotated = ids.map((_, k) => ids[(k + idx) % ids.length]);
+              store.submitVote(room.code, slide.id, st.id, rotated, false);
+            } else if (slide.type === 'open_ended') {
+              const phrases = [
+                'Grazie per questa lezione chiara e interessante!',
+                'Vorrei fare altri esercizi pratici come questo.',
+                'Molto utile per la vita di tutti i giorni.',
+                'Mi piace lavorare insieme ai compagni di classe.',
+                'Tutto chiaro, possiamo andare avanti!'
+              ];
+              store.submitVote(room.code, slide.id, st.id, {
+                text: phrases[idx % phrases.length],
+                author: st.name,
+                ts: Date.now()
+              }, false);
+            } else if (slide.type === 'quiz' && slide.options?.length) {
+              const pick = idx % 3 === 0 ? (slide.options[1] || slide.options[0]) : (slide.options.find(o => o.isCorrect) || slide.options[0]);
+              store.submitVote(room.code, slide.id, st.id, {
+                optionId: pick.id,
+                isCorrect: Boolean(pick.isCorrect),
+                points: pick.isCorrect ? (750 + idx * 45) : 0,
+                name: st.name
+              }, false);
+            }
+          });
+          showToast('Simulati 5 voti della classe!', 'success');
+        } else if (action === 'export-csv') {
+          exportRoomResults(store.getRoom(appState.roomCode), 'csv');
+        } else if (action === 'export-json') {
+          exportRoomResults(store.getRoom(appState.roomCode), 'json');
+        } else if (action === 'import-json') {
+          const fileInput = document.getElementById('import-lesson-file');
+          if (fileInput) {
+            fileInput.value = '';
+            fileInput.click();
+          }
+        }
+      });
+
+      const importFileInput = document.getElementById('import-lesson-file');
+      if (importFileInput) {
+        importFileInput.addEventListener('change', (e) => {
+          const file = e.target.files && e.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            try {
+              const rawText = String(ev.target && ev.target.result ? ev.target.result : '');
+              const parsed = JSON.parse(rawText);
+              if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.slides) || parsed.slides.length === 0) {
+                showToast('Il file selezionato non è una lezione valida.', 'error');
+                return;
+              }
+              const rawCode = String(parsed.code || '').trim();
+              const code = (/^\d{6}$/.test(rawCode) && !store.rooms[rawCode])
+                ? rawCode
+                : generateRoomCode(store.rooms);
+
+              const importedRoom = {
+                code,
+                title: String(parsed.title || file.name.replace(/\.json$/i, '') || 'Lezione Importata').trim(),
+                theme: THEMES[parsed.theme] ? parsed.theme : 'cream',
+                activeSlideIndex: Math.min(Math.max(0, Number(parsed.activeSlideIndex) || 0), parsed.slides.length - 1),
+                slides: parsed.slides,
+                qa: Array.isArray(parsed.qa) ? parsed.qa : [],
+                updatedAt: Date.now()
+              };
+
+              store.rooms[code] = importedRoom;
+              store.saveToStorage();
+              store.emit();
+              showToast(`Lezione "${importedRoom.title}" caricata!`, 'success');
+              navigateTo('editor', code);
+            } catch (_) {
+              showToast('Errore nella lettura del file JSON.', 'error');
+            }
+          };
+          reader.onerror = () => {
+            showToast('Impossibile leggere il file selezionato.', 'error');
+          };
+          reader.readAsText(file);
+        });
+      }
+
+      document.addEventListener('input', (e) => {
+        const el = e.target;
+        const action = el.dataset.action;
+
+        if (action === 'edit-room-title') {
+          store.updateRoom(appState.roomCode, (r) => { r.title = el.value; });
+        } else if (action === 'edit-slide-field') {
+          const field = el.dataset.field;
+          store.updateRoom(appState.roomCode, (r) => {
+            const sl = r.slides[r.activeSlideIndex];
+            if (sl) {
+              sl[field] = field === 'maxWords' ? Number(el.value) : el.value;
+            }
+          });
+        } else if (action === 'edit-option-text') {
+          const optId = el.dataset.optionId;
+          store.updateRoom(appState.roomCode, (r) => {
+            const sl = r.slides[r.activeSlideIndex];
+            const opt = sl?.options?.find(o => o.id === optId);
+            if (opt) opt.text = el.value;
+          });
+        } else if (action === 'edit-statement-text') {
+          const stId = el.dataset.stid;
+          store.updateRoom(appState.roomCode, (r) => {
+            const sl = r.slides[r.activeSlideIndex];
+            const st = sl?.statements?.find(s => s.id === stId);
+            if (st) st.text = el.value;
+          });
+        } else if (action === 'edit-rank-item') {
+          const itemId = el.dataset.itemId;
+          store.updateRoom(appState.roomCode, (r) => {
+            const sl = r.slides[r.activeSlideIndex];
+            const it = sl?.items?.find(i => i.id === itemId);
+            if (it) it.text = el.value;
+          });
+        } else if (action === 'change-scale-slider') {
+          const key = el.dataset.draftKey;
+          const stId = el.dataset.stid;
+          const val = Number(el.value);
+          if (!appState.drafts[key]) appState.drafts[key] = {};
+          appState.drafts[key][stId] = val;
+          const badge = document.querySelector(`[data-scale-badge="${key}_${stId}"]`);
+          if (badge) badge.textContent = String(val);
+        } else if (action === 'edit-student-name') {
+          appState.studentName = el.value;
+          localStorage.setItem('aulalive_student_name', el.value);
+        } else if (el.dataset.draftKey && el.dataset.wordIndex !== undefined) {
+          const key = el.dataset.draftKey;
+          const idx = Number(el.dataset.wordIndex);
+          if (!appState.drafts[key]) appState.drafts[key] = [];
+          appState.drafts[key][idx] = el.value;
+        } else if (el.dataset.openDraft) {
+          appState.drafts[el.dataset.openDraft] = el.value;
+        }
+      });
+
+      document.addEventListener('change', (e) => {
+        const el = e.target;
+        if (el.dataset.action === 'change-sim-student') {
+          appState.simStudentIndex = Number(el.value || 0);
+          renderApp();
+        } else if (el.dataset.action === 'edit-quiz-duration') {
+          const dur = Number(el.value || 25);
+          store.updateRoom(appState.roomCode, (r) => {
+            const sl = r.slides[r.activeSlideIndex];
+            if (sl && sl.type === 'quiz') {
+              sl.duration = dur;
+              if (sl.status === 'waiting') sl.timeLeft = dur;
+            }
+          });
+        }
+      });
+
+      document.addEventListener('submit', (e) => {
+        const form = e.target.closest('form[data-action]');
+        if (!form) return;
+        e.preventDefault();
+        const action = form.dataset.action;
+
+        if (action === 'join-room-form') {
+          const code = (form.querySelector('[name="roomCode"]')?.value || '').trim();
+          if (!/^\d{6}$/.test(code)) {
+            showToast('Inserisci un codice valido di 6 cifre', 'warning');
+            return;
+          }
+          navigateTo('audience', code);
+        } else if (action === 'submit-wordcloud') {
+          const isSim = form.dataset.sim === 'true';
+          const pid = isSim ? SIMULATED_STUDENTS[appState.simStudentIndex].id : participantDeviceId;
+          const inputs = Array.from(form.querySelectorAll('input[data-word-index]'));
+          const words = inputs.map(i => i.value.trim()).filter(Boolean);
+          if (words.length === 0) {
+            showToast('Scrivi almeno una parola prima di inviare', 'warning');
+            return;
+          }
+          store.submitVote(appState.roomCode, form.dataset.slideId, pid, words, !isSim);
+          showToast('Parole inviate alla nuvola!', 'success');
+        } else if (action === 'submit-scales') {
+          const isSim = form.dataset.sim === 'true';
+          const pid = isSim ? SIMULATED_STUDENTS[appState.simStudentIndex].id : participantDeviceId;
+          const draftKey = `${appState.roomCode}_${form.dataset.slideId}_${pid}`;
+          const vals = appState.drafts[draftKey] || {};
+          store.submitVote(appState.roomCode, form.dataset.slideId, pid, { ...vals }, !isSim);
+          showToast('Valutazione inviata!', 'success');
+        } else if (action === 'submit-open') {
+          const isSim = form.dataset.sim === 'true';
+          const simObj = SIMULATED_STUDENTS[appState.simStudentIndex];
+          const pid = isSim ? simObj.id : participantDeviceId;
+          const author = isSim ? simObj.name : (appState.studentName || 'Studente');
+          const ta = form.querySelector('textarea');
+          const text = (ta?.value || '').trim();
+          if (!text) {
+            showToast('Scrivi un messaggio prima di inviare', 'warning');
+            return;
+          }
+          store.submitVote(appState.roomCode, form.dataset.slideId, pid, {
+            text,
+            author,
+            ts: Date.now()
+          }, !isSim);
+          showToast('Bigliettino inviato alla LIM!', 'success');
+        } else if (action === 'submit-qa-form') {
+          const ta = form.querySelector('[name="qaText"]');
+          const text = (ta?.value || '').trim();
+          if (!text) return;
+          store.addQuestion(appState.roomCode, text, appState.studentName || 'Studente', true);
+          if (ta) ta.value = '';
+          showToast('Domanda inviata!', 'success');
+        }
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          const modal = document.getElementById('modal-container');
+          if (modal && !modal.classList.contains('hidden')) {
+            closeModal();
+            return;
+          }
+          if (appState.showQaDrawer) {
+            appState.showQaDrawer = false;
+            renderApp();
+          }
+          return;
+        }
+
+        if (appState.view === 'stage' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) {
+          if (e.key === 'ArrowRight') {
+            store.updateRoom(appState.roomCode, (r) => {
+              r.activeSlideIndex = Math.min(r.slides.length - 1, (r.activeSlideIndex || 0) + 1);
+            });
+          } else if (e.key === 'ArrowLeft') {
+            store.updateRoom(appState.roomCode, (r) => {
+              r.activeSlideIndex = Math.max(0, (r.activeSlideIndex || 0) - 1);
+            });
+          }
+        }
+      });
+
+      // Riconnessione automatica smartphone al risveglio schermo
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && appState.view === 'audience' && appState.roomCode) {
+          store.sync.connectClient(appState.roomCode);
+        }
+      });
+
+      // =========================================================================
+      // 13. ESPORTAZIONE RISULTATI CSV (RFC 4180 + BOM UTF-8) E JSON
+      // =========================================================================
+      function exportRoomResults(room, format = 'csv') {
+        if (!room) return;
+        const baseName = `aulalive_cpia_${room.code}_${new Date().toISOString().slice(0, 10)}`;
+
+        if (format === 'json') {
+          const blob = new Blob([JSON.stringify(room, null, 2)], { type: 'application/json;charset=utf-8' });
+          triggerDownload(blob, `${baseName}.json`);
+          showToast('File JSON esportato!', 'success');
+          return;
+        }
+
+        const rows = [['Slide #', 'Tipologia', 'Domanda', 'Partecipante ID', 'Risposta']];
+        (room.slides || []).forEach((sl, idx) => {
+          const responses = sl.responses || {};
+          Object.entries(responses).forEach(([pid, val]) => {
+            let formatted = '';
+            if (Array.isArray(val)) {
+              formatted = val.join(' | ');
+            } else if (typeof val === 'object' && val !== null) {
+              formatted = val.text ? `${val.author || pid}: ${val.text}` : JSON.stringify(val);
+            } else {
+              formatted = String(val);
+            }
+            rows.push([
+              String(idx + 1),
+              SLIDE_TYPES[sl.type]?.label || sl.type,
+              sl.question,
+              pid,
+              formatted
+            ]);
+          });
+        });
+
+        const csvContent = '\uFEFF' + rows.map(r =>
+          r.map(cell => `"${String(cell || '').replace(/"/g, '""')}"`).join(';')
+        ).join('\r\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+        triggerDownload(blob, `${baseName}.csv`);
+        showToast('File CSV esportato (pronto per Excel)!', 'success');
+      }
+
+      function triggerDownload(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }, 100);
+      }
+
+      // =========================================================================
+      // 14. AVVIO APPLICAZIONE E GESTIONE DEEP-LINK (#join=XXXXXX)
+      // =========================================================================
+      store.subscribe(() => {
+        renderApp();
+      });
+
+      function bootstrap() {
+        ensureQuizTimerLoop();
+        const hash = window.location.hash || '';
+        const match = hash.match(/join=(\d{6})/);
+        if (match && match[1]) {
+          navigateTo('audience', match[1]);
+        } else {
+          renderApp();
+        }
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bootstrap);
+      } else {
+        bootstrap();
+      }
+    })();
+  </script>
+</body>
+</html>
