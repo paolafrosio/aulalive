@@ -1215,6 +1215,7 @@
         view: 'home', // 'home' | 'editor' | 'stage' | 'audience'
         roomCode: null,
         editorTab: 'content', // 'content' | 'theme'
+        mobileEditorPane: 'edit', // 'slides' | 'preview' | 'edit'
         showPhoneSim: true,
         simStudentIndex: 0,
         showQaDrawer: false,
@@ -2445,6 +2446,7 @@
         const activeIdx = Math.min(Math.max(0, room.activeSlideIndex || 0), room.slides.length - 1);
         const slide = room.slides[activeIdx];
         const connectedCount = store.sync.getConnectedCount();
+        const pane = appState.mobileEditorPane || 'edit';
 
         // Pannello Destro: Configurazione Contenuto o Tema
         let rightPanelHtml = '';
@@ -2721,10 +2723,32 @@
               </div>
             </header>
 
+            <!-- Barra Schede per schermi medi/piccoli o finestra affiancata -->
+            <div class="lg:hidden grid grid-cols-3 gap-1.5 p-2 bg-slate-100 border-b border-slate-200 shrink-0">
+              <button
+                type="button"
+                data-action="set-mobile-pane"
+                data-pane="slides"
+                class="py-2 px-2 rounded-xl text-xs font-extrabold transition ${pane === 'slides' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600'}"
+              >1. Slide (${room.slides.length})</button>
+              <button
+                type="button"
+                data-action="set-mobile-pane"
+                data-pane="edit"
+                class="py-2 px-2 rounded-xl text-xs font-extrabold transition ${pane === 'edit' ? 'bg-[#FF5A36] text-white shadow-sm' : 'text-slate-600'}"
+              >2. Modifica Slide</button>
+              <button
+                type="button"
+                data-action="set-mobile-pane"
+                data-pane="preview"
+                class="py-2 px-2 rounded-xl text-xs font-extrabold transition ${pane === 'preview' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600'}"
+              >3. Anteprima</button>
+            </div>
+
             <!-- Workspace a 3 Colonne -->
             <div class="flex-1 flex overflow-hidden">
               <!-- Colonna 1: Elenco Slide -->
-              <aside class="w-60 bg-white border-r border-slate-200 flex flex-col shrink-0">
+              <aside class="${pane === 'slides' ? 'flex w-full' : 'hidden'} lg:flex lg:w-60 bg-white border-r border-slate-200 flex-col shrink-0">
                 <div class="p-3 border-b border-slate-100">
                   <div class="relative">
                     <button
@@ -2782,7 +2806,7 @@
               </aside>
 
               <!-- Colonna 2: Anteprima Palco + Telefono Test -->
-              <main class="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col xl:flex-row items-center xl:items-stretch justify-center gap-6 ${(THEMES[room.theme] || THEMES.cream).stageBg}">
+              <main class="${pane === 'preview' ? 'flex' : 'hidden'} lg:flex flex-1 overflow-y-auto p-4 sm:p-6 flex-col xl:flex-row items-center xl:items-stretch justify-center gap-6 ${(THEMES[room.theme] || THEMES.cream).stageBg}">
                 <div class="flex-1 w-full max-w-4xl flex flex-col min-h-[420px]">
                   ${renderStageSlideContent(room, slide, true)}
                 </div>
@@ -2790,7 +2814,7 @@
               </main>
 
               <!-- Colonna 3: Ispettore Impostazioni -->
-              <aside class="w-80 bg-white border-l border-slate-200 flex flex-col shrink-0">
+              <aside class="${pane === 'edit' ? 'flex w-full' : 'hidden'} lg:flex lg:w-80 bg-white border-l border-slate-200 flex-col shrink-0">
                 <div class="grid grid-cols-2 border-b border-slate-200 p-1.5 gap-1.5 bg-slate-50">
                   <button
                     type="button"
@@ -2839,9 +2863,9 @@
                   type="button"
                   data-action="open-editor"
                   data-code="${escapeHTML(room.code)}"
-                  class="px-3 py-2 rounded-xl border ${theme.pillBg} text-xs font-extrabold flex items-center gap-1.5 hover:opacity-80"
+                  class="btn-tactile px-3.5 py-2 rounded-xl bg-white text-slate-900 border border-slate-300 text-xs font-extrabold flex items-center gap-1.5 hover:bg-slate-50"
                 >
-                  ${getIcon('arrowLeft', 'w-4 h-4')} Editor
+                  ${getIcon('arrowLeft', 'w-4 h-4')} Modifica Slide
                 </button>
 
                 <button
@@ -3322,6 +3346,9 @@
         } else if (action === 'set-editor-tab') {
           appState.editorTab = btn.dataset.tab;
           renderApp();
+        } else if (action === 'set-mobile-pane') {
+          appState.mobileEditorPane = btn.dataset.pane;
+          renderApp();
         } else if (action === 'set-audience-tab') {
           appState.audienceSubTab = btn.dataset.tab;
           renderApp();
@@ -3335,6 +3362,7 @@
           if (dd) dd.classList.toggle('hidden');
         } else if (action === 'add-slide') {
           const type = btn.dataset.slideType;
+          appState.mobileEditorPane = 'edit';
           store.updateRoom(appState.roomCode, (r) => {
             const newSl = createSlideTemplate(type);
             r.slides.push(newSl);
@@ -3342,6 +3370,7 @@
           });
         } else if (action === 'select-slide') {
           const idx = Number(btn.dataset.index || 0);
+          appState.mobileEditorPane = 'edit';
           store.updateRoom(appState.roomCode, (r) => {
             r.activeSlideIndex = idx;
           });
