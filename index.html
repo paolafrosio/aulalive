@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AulaLive CPIA — Presentazioni Interattive per la Didattica</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36' fill='none'%3E%3Crect width='36' height='36' rx='11' fill='%23FF5A36'/%3E%3Crect x='2' y='2' width='32' height='32' rx='9' stroke='white' stroke-opacity='0.25' stroke-width='1.5'/%3E%3Cpath d='M9.5 24.5L14.5 12L19.5 24.5M11.3 20.5H17.7' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='26.5' cy='13.5' r='3' fill='%23FACC15'/%3E%3Cpath d='M26.5 19V24.5' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E" />
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- PeerJS WebRTC P2P (caricato con defer per non bloccare mai il rendering) -->
@@ -43,6 +44,10 @@
   <style>
     * {
       box-sizing: border-box;
+    }
+    html {
+      font-size: 16px;
+      transition: font-size 0.2s ease;
     }
     body {
       font-family: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -184,15 +189,29 @@
       cursor: pointer;
     }
 
-    /* Transizioni fluide per le parole della Nuvola */
+    /* Transizioni fluide per le parole della Nuvola + Drag & Drop / Touch Merge */
     .wc-word {
-      transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s ease;
+      transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s ease, background-color 0.2s ease;
       user-select: none;
-      cursor: default;
+      cursor: grab;
+      touch-action: none;
     }
     .wc-word:hover {
       transform: scale(1.09) !important;
       z-index: 20 !important;
+    }
+    .wc-word.wc-dragging {
+      cursor: grabbing;
+      opacity: 0.78 !important;
+      z-index: 40 !important;
+      transform: scale(1.14) !important;
+    }
+    .wc-word.wc-drop-target {
+      outline: 3px dashed #FF5A36;
+      outline-offset: 4px;
+      background-color: rgba(255, 90, 54, 0.14);
+      transform: scale(1.18) !important;
+      z-index: 35 !important;
     }
   </style>
 </head>
@@ -355,7 +374,7 @@
           ranking: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg>`,
           open_ended: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
           quiz: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
-          leaderboard: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>`,
+          leaderboard: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55-.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>`,
           play: `<svg class="${cls}" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>`,
           plus: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
           trash: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`,
@@ -504,6 +523,8 @@
               question: 'Quale parola descrive il tuo obiettivo di studio oggi?',
               subtitle: 'Scrivi da 1 a 3 parole brevi e invia',
               maxWords: 3,
+              wordAliases: {},
+              mergeHistory: [],
               responses: {}
             };
           case 'multiple_choice':
@@ -853,13 +874,8 @@
               });
             });
 
-            peer.on('error', (err) => {
-              if (err && err.type === 'unavailable-id') {
-                // Un'altra scheda sta già ospitando questa aula su questo PC
-                this.status = 'local_only';
-              } else {
-                this.status = 'local_only';
-              }
+            peer.on('error', () => {
+              this.status = 'local_only';
               this.store.emit();
             });
           } catch (_) {
@@ -913,7 +929,6 @@
           this.role = 'client';
           this.roomCode = code;
 
-          // Se la stanza esiste già in localStorage (stesso browser/PC), caricala subito
           const localRoom = this.store.getRoom(code);
           if (localRoom) {
             this.store.remoteRooms[code] = localRoom;
@@ -1129,7 +1144,6 @@
               participantId,
               payload
             });
-            // Aggiornamento ottimistico locale
             const rRoom = this.remoteRooms[code];
             if (rRoom) {
               const sl = rRoom.slides.find(s => s.id === slideId);
@@ -1205,10 +1219,10 @@
       // =========================================================================
       // 6. STATO UI LOCALE, TIMER QUIZ E PRESERVAZIONE FOCUS
       // =========================================================================
-      let participantDeviceId = localStorage.getItem('aulalive_device_id');
+      let participantDeviceId = sessionStorage.getItem('aulalive_device_id');
       if (!participantDeviceId) {
         participantDeviceId = uid('stu');
-        localStorage.setItem('aulalive_device_id', participantDeviceId);
+        sessionStorage.setItem('aulalive_device_id', participantDeviceId);
       }
 
       const appState = {
@@ -1220,12 +1234,35 @@
         simStudentIndex: 0,
         showQaDrawer: false,
         fontScale: 0, // 0 = normale, 1 = A+, 2 = A++
-        studentName: localStorage.getItem('aulalive_student_name') || '',
+        studentName: sessionStorage.getItem('aulalive_student_name') || '',
         audienceSubTab: 'vote', // 'vote' | 'qa'
-        drafts: {} // Bozze input studente per non perdere mai testi o slider tra i render
+        drafts: {}
       };
 
       let quizIntervalId = null;
+
+      function applyGlobalFontScale() {
+        const rootSizes = ['16px', '18px', '20.5px'];
+        document.documentElement.style.fontSize = rootSizes[appState.fontScale] || '16px';
+      }
+
+      function renderFontScaleButtons(isDark = false) {
+        const borderCls = isDark ? 'border-slate-700 bg-slate-800 text-slate-200' : 'border-slate-200 bg-white text-slate-700';
+        return `
+          <div class="inline-flex rounded-xl border ${borderCls} p-0.5" title="Dimensione testo di titoli e contenuti">
+            ${['A', 'A+', 'A++'].map((lbl, idx) => `
+              <button
+                type="button"
+                data-action="set-font-scale"
+                data-scale="${idx}"
+                class="px-2.5 py-1 rounded-lg text-xs font-black transition ${
+                  appState.fontScale === idx ? 'bg-[#FF5A36] text-white' : ''
+                }"
+              >${lbl}</button>
+            `).join('')}
+          </div>
+        `;
+      }
 
       function ensureQuizTimerLoop() {
         if (quizIntervalId) {
@@ -1263,27 +1300,78 @@
       }
 
       // =========================================================================
-      // 7. MOTORE WORD CLOUD (Spirale, Collision Detection e ResizeObserver)
+      // 7. MOTORE WORD CLOUD (Spirale, Merge Drag&Drop/Touch e ResizeObserver)
       // =========================================================================
       let wcResizeObserver = null;
+
+      function normalizeWordKey(raw) {
+        return String(raw || '').trim().replace(/\s+/g, ' ').toLowerCase();
+      }
+
+      function resolveWordAlias(raw, aliases) {
+        let current = String(raw || '').trim().replace(/\s+/g, ' ');
+        if (!current) return '';
+        if (!aliases) return current;
+        const visited = new Set();
+        while (true) {
+          const k = normalizeWordKey(current);
+          if (!aliases[k] || visited.has(k)) break;
+          visited.add(k);
+          current = aliases[k];
+        }
+        return current;
+      }
 
       function computeWordFrequencies(slide) {
         const freq = new Map();
         const responses = slide.responses || {};
+        const aliases = slide.wordAliases || {};
         Object.values(responses).forEach(entry => {
           const words = Array.isArray(entry) ? entry : [entry];
           words.forEach(raw => {
-            const clean = String(raw || '').trim().replace(/\s+/g, ' ');
-            if (!clean) return;
-            const key = clean.toLowerCase();
+            const resolved = resolveWordAlias(raw, aliases);
+            if (!resolved) return;
+            const key = normalizeWordKey(resolved);
             if (!freq.has(key)) {
-              freq.set(key, { label: clean, count: 1 });
+              freq.set(key, { key, label: resolved, count: 1 });
             } else {
               freq.get(key).count += 1;
             }
           });
         });
         return Array.from(freq.values()).sort((a, b) => b.count - a.count);
+      }
+
+      function mergeWordCloudTerms(sourceKey, sourceLabel, targetKey, targetLabel) {
+        if (!sourceKey || !targetKey || sourceKey === targetKey) return;
+        store.updateRoom(appState.roomCode, (r) => {
+          const sl = r.slides[r.activeSlideIndex];
+          if (!sl || sl.type !== 'wordcloud') return;
+          if (!sl.wordAliases) sl.wordAliases = {};
+          if (!sl.mergeHistory) sl.mergeHistory = [];
+          sl.mergeHistory.push({
+            prevAliases: { ...sl.wordAliases },
+            sourceLabel,
+            targetLabel
+          });
+          Object.keys(sl.wordAliases).forEach(k => {
+            if (normalizeWordKey(sl.wordAliases[k]) === sourceKey) {
+              sl.wordAliases[k] = targetLabel;
+            }
+          });
+          sl.wordAliases[sourceKey] = targetLabel;
+        });
+        showToast(`Unito "${sourceLabel}" in "${targetLabel}"`, 'success');
+      }
+
+      function undoLastWordMerge() {
+        store.updateRoom(appState.roomCode, (r) => {
+          const sl = r.slides[r.activeSlideIndex];
+          if (!sl || sl.type !== 'wordcloud' || !sl.mergeHistory || sl.mergeHistory.length === 0) return;
+          const last = sl.mergeHistory.pop();
+          sl.wordAliases = last.prevAliases || {};
+        });
+        showToast('Ultima unione annullata', 'info');
       }
 
       function layoutWordCloudContainers() {
@@ -1396,25 +1484,46 @@
               </div>
             `;
           } else {
+            const scaleMult = appState.fontScale === 2 ? 1.22 : appState.fontScale === 1 ? 1.1 : 1;
             const wordsHtml = items.map((item, idx) => {
               const ratio = maxCount === minCount ? 0.65 : (item.count - minCount) / (maxCount - minCount);
-              const minPx = isCompactPreview ? 18 : 22;
-              const maxPx = isCompactPreview ? 50 : 68;
+              const minPx = Math.round((isCompactPreview ? 18 : 22) * scaleMult);
+              const maxPx = Math.round((isCompactPreview ? 50 : 68) * scaleMult);
               const fontSize = Math.round(minPx + ratio * (maxPx - minPx));
               const color = CHART_PALETTE[idx % CHART_PALETTE.length];
               const tilt = idx % 5 === 0 ? '-3deg' : (idx % 4 === 0 ? '3deg' : '0deg');
               return `
                 <span
-                  class="wc-word absolute font-display font-extrabold leading-none tracking-tight px-2 py-1 rounded-xl opacity-0"
+                  draggable="true"
+                  data-wc-key="${escapeHTML(item.key)}"
+                  data-wc-label="${escapeHTML(item.label)}"
+                  class="wc-word absolute font-display font-extrabold leading-none tracking-tight px-2 py-1 rounded-xl opacity-0 inline-flex items-baseline gap-1"
                   style="font-size: ${fontSize}px; color: ${color}; transform: rotate(${tilt});"
-                  title="${escapeHTML(item.label)}: ${item.count} ${item.count === 1 ? 'voto' : 'voti'}"
+                  title="Trascina sopra un'altra parola simile per unirle (${item.count} ${item.count === 1 ? 'voto' : 'voti'})"
                 >
-                  ${escapeHTML(item.label)}
+                  <span>${escapeHTML(item.label)}</span>${item.count > 1 ? `<sup class="text-[0.38em] font-black opacity-75">${item.count}</sup>` : ''}
                 </span>
               `;
             }).join('');
 
+            const mergeCount = (slide.mergeHistory || []).length;
+            const mergeBarHtml = `
+              <div class="flex flex-wrap items-center justify-between gap-2 mb-2 px-1">
+                <span class="text-xs font-semibold ${theme.textSecondary}">
+                  💡 Trascina una parola sopra un'altra simile per unirle
+                </span>
+                ${mergeCount > 0 ? `
+                  <button
+                    type="button"
+                    data-action="undo-wc-merge"
+                    class="px-2.5 py-1 rounded-xl border ${theme.pillBg} text-xs font-extrabold hover:opacity-80 transition"
+                  >↩ Annulla unione (${mergeCount})</button>
+                ` : ''}
+              </div>
+            `;
+
             visualHtml = `
+              ${mergeBarHtml}
               <div data-wordcloud-canvas class="relative w-full flex-1 min-h-[290px] sm:min-h-[370px] overflow-hidden select-none">
                 ${wordsHtml}
               </div>
@@ -1482,7 +1591,6 @@
 
             visualHtml = `${switcherHtml}<div class="space-y-4 my-auto">${barsHtml}</div>`;
           } else {
-            // Grafico Torta o Ciambella SVG con gestione sicura di 0% e 100%
             const radius = 92;
             const cx = 120;
             const cy = 120;
@@ -1688,7 +1796,6 @@
         } else if (slide.type === 'quiz') {
           const status = slide.status || 'waiting';
           const timeLeft = typeof slide.timeLeft === 'number' ? slide.timeLeft : (slide.duration || 25);
-          const duration = slide.duration || 25;
           const options = slide.options || [];
           const counts = {};
           options.forEach(o => { counts[o.id] = 0; });
@@ -1777,7 +1884,6 @@
 
           visualHtml = `${controlsHtml}<div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 my-auto">${optionsGridHtml}</div>`;
         } else if (slide.type === 'leaderboard') {
-          // Somma punti da tutte le slide Quiz della presentazione
           const totals = {};
           (room.slides || []).forEach(sl => {
             if (sl.type !== 'quiz' || !sl.responses) return;
@@ -1988,7 +2094,7 @@
 
           formHtml = `
             <form data-action="submit-scales" data-slide-id="${escapeHTML(slide.id)}" data-sim="${isSimulator}" class="space-y-4">
-              ${statements.map((st, idx) => {
+              ${statements.map((st) => {
                 const val = currentVals[st.id] || 3;
                 return `
                   <div class="p-3.5 rounded-2xl bg-white border-2 border-slate-200 space-y-2.5">
@@ -2210,7 +2316,7 @@
           <div class="min-h-screen flex flex-col">
             <!-- Navbar Superiore -->
             <header class="w-full border-b border-slate-200/80 bg-white/85 backdrop-blur-md sticky top-0 z-30">
-              <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+              <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-2">
                 <div class="flex items-center gap-3">
                   ${getIcon('logo', 'w-10 h-10')}
                   <div>
@@ -2221,6 +2327,7 @@
                   </div>
                 </div>
                 <div class="flex items-center gap-2 text-xs font-bold text-slate-600">
+                  ${renderFontScaleButtons(false)}
                   <span class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200">
                     <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Pronto per la LIM • Zero Database
                   </span>
@@ -2501,7 +2608,6 @@
             </div>
           `;
         } else {
-          // Tab Contenuto
           let specificEditorHtml = '';
 
           if (slide.type === 'wordcloud') {
@@ -2557,7 +2663,7 @@
                   </div>
                 </div>
                 <label class="block text-xs font-extrabold uppercase tracking-wider text-slate-500">Affermazioni da Valutare</label>
-                ${(slide.statements || []).map((st, idx) => `
+                ${(slide.statements || []).map((st) => `
                   <div class="flex items-center gap-2">
                     <input
                       type="text"
@@ -2610,7 +2716,7 @@
                   </select>
                 </div>
                 <label class="block text-xs font-extrabold uppercase tracking-wider text-slate-500">Risposte (spunta quella corretta ✓)</label>
-                ${(slide.options || []).map((opt, idx) => `
+                ${(slide.options || []).map((opt) => `
                   <div class="flex items-center gap-2">
                     <button
                       type="button"
@@ -2690,6 +2796,8 @@
               </div>
 
               <div class="flex items-center gap-2 shrink-0">
+                ${renderFontScaleButtons(false)}
+
                 <span class="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold ${
                   store.sync.status === 'online'
                     ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
@@ -2889,19 +2997,7 @@
               </div>
 
               <div class="flex items-center gap-2">
-                <!-- Accessibilità Dimensione Testo LIM -->
-                <div class="inline-flex rounded-xl border ${theme.pillBg} p-0.5">
-                  ${['A', 'A+', 'A++'].map((lbl, idx) => `
-                    <button
-                      type="button"
-                      data-action="set-font-scale"
-                      data-scale="${idx}"
-                      class="px-2.5 py-1 rounded-lg text-xs font-black transition ${
-                        appState.fontScale === idx ? 'bg-[#FF5A36] text-white' : ''
-                      }"
-                    >${lbl}</button>
-                  `).join('')}
-                </div>
+                ${renderFontScaleButtons(theme.isDark)}
 
                 <button
                   type="button"
@@ -3149,6 +3245,7 @@
       // 11. SMART RENDERING CON PRESERVAZIONE DEL FOCUS E DEL CURSORE
       // =========================================================================
       function renderApp() {
+        applyGlobalFontScale();
         const root = document.getElementById('app');
         if (!root) return;
 
@@ -3411,11 +3508,17 @@
             const sl = r.slides[r.activeSlideIndex];
             if (sl) sl.chartType = btn.dataset.chart;
           });
+        } else if (action === 'undo-wc-merge') {
+          undoLastWordMerge();
         } else if (action === 'reset-slide-responses') {
           store.updateRoom(appState.roomCode, (r) => {
             const sl = r.slides[r.activeSlideIndex];
             if (sl) {
               sl.responses = {};
+              if (sl.type === 'wordcloud') {
+                sl.wordAliases = {};
+                sl.mergeHistory = [];
+              }
               if (sl.type === 'quiz') {
                 sl.status = 'waiting';
                 sl.timeLeft = sl.duration || 25;
@@ -3673,7 +3776,7 @@
           if (badge) badge.textContent = String(val);
         } else if (action === 'edit-student-name') {
           appState.studentName = el.value;
-          localStorage.setItem('aulalive_student_name', el.value);
+          sessionStorage.setItem('aulalive_student_name', el.value);
         } else if (el.dataset.draftKey && el.dataset.wordIndex !== undefined) {
           const key = el.dataset.draftKey;
           const idx = Number(el.dataset.wordIndex);
@@ -3790,6 +3893,122 @@
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible' && appState.view === 'audience' && appState.roomCode) {
           store.sync.connectClient(appState.roomCode);
+        }
+      });
+
+      // =========================================================================
+      // 12B. DRAG & DROP + TOUCH PER UNIRE PAROLE NELLA WORD CLOUD
+      // =========================================================================
+      let draggedWcWord = null;
+      let touchDragState = null;
+
+      document.addEventListener('dragstart', (e) => {
+        const wordEl = e.target.closest('.wc-word');
+        if (!wordEl) return;
+        draggedWcWord = {
+          key: wordEl.dataset.wcKey,
+          label: wordEl.dataset.wcLabel
+        };
+        wordEl.classList.add('wc-dragging');
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', wordEl.dataset.wcKey || '');
+        }
+      });
+
+      document.addEventListener('dragover', (e) => {
+        if (!draggedWcWord) return;
+        const targetEl = e.target.closest('.wc-word');
+        if (targetEl && targetEl.dataset.wcKey !== draggedWcWord.key) {
+          e.preventDefault();
+          document.querySelectorAll('.wc-word.wc-drop-target').forEach(el => {
+            if (el !== targetEl) el.classList.remove('wc-drop-target');
+          });
+          targetEl.classList.add('wc-drop-target');
+        }
+      });
+
+      document.addEventListener('dragleave', (e) => {
+        const targetEl = e.target.closest('.wc-word');
+        if (targetEl) {
+          targetEl.classList.remove('wc-drop-target');
+        }
+      });
+
+      document.addEventListener('drop', (e) => {
+        if (!draggedWcWord) return;
+        const targetEl = e.target.closest('.wc-word');
+        if (targetEl && targetEl.dataset.wcKey !== draggedWcWord.key) {
+          e.preventDefault();
+          const src = draggedWcWord;
+          const tgtKey = targetEl.dataset.wcKey;
+          const tgtLabel = targetEl.dataset.wcLabel;
+          draggedWcWord = null;
+          document.querySelectorAll('.wc-word').forEach(el => el.classList.remove('wc-dragging', 'wc-drop-target'));
+          mergeWordCloudTerms(src.key, src.label, tgtKey, tgtLabel);
+        }
+      });
+
+      document.addEventListener('dragend', () => {
+        draggedWcWord = null;
+        document.querySelectorAll('.wc-word').forEach(el => el.classList.remove('wc-dragging', 'wc-drop-target'));
+      });
+
+      document.addEventListener('touchstart', (e) => {
+        const wordEl = e.target.closest('.wc-word');
+        if (!wordEl || e.touches.length !== 1) return;
+        const touch = e.touches[0];
+        const ghost = wordEl.cloneNode(true);
+        ghost.style.position = 'fixed';
+        ghost.style.left = `${touch.clientX}px`;
+        ghost.style.top = `${touch.clientY}px`;
+        ghost.style.transform = 'translate(-50%, -50%) scale(1.12)';
+        ghost.style.pointerEvents = 'none';
+        ghost.style.zIndex = '9999';
+        ghost.style.opacity = '0.9';
+        ghost.style.background = 'rgba(255, 255, 255, 0.94)';
+        ghost.style.boxShadow = '0 12px 28px rgba(15, 23, 42, 0.22)';
+        document.body.appendChild(ghost);
+
+        wordEl.classList.add('wc-dragging');
+        touchDragState = {
+          sourceEl: wordEl,
+          key: wordEl.dataset.wcKey,
+          label: wordEl.dataset.wcLabel,
+          ghost,
+          currentTarget: null
+        };
+      }, { passive: true });
+
+      document.addEventListener('touchmove', (e) => {
+        if (!touchDragState || e.touches.length !== 1) return;
+        e.preventDefault();
+        const touch = e.touches[0];
+        touchDragState.ghost.style.left = `${touch.clientX}px`;
+        touchDragState.ghost.style.top = `${touch.clientY}px`;
+
+        const under = document.elementFromPoint(touch.clientX, touch.clientY);
+        const targetEl = under ? under.closest('.wc-word') : null;
+
+        if (touchDragState.currentTarget && touchDragState.currentTarget !== targetEl) {
+          touchDragState.currentTarget.classList.remove('wc-drop-target');
+          touchDragState.currentTarget = null;
+        }
+        if (targetEl && targetEl !== touchDragState.sourceEl && targetEl.dataset.wcKey !== touchDragState.key) {
+          targetEl.classList.add('wc-drop-target');
+          touchDragState.currentTarget = targetEl;
+        }
+      }, { passive: false });
+
+      document.addEventListener('touchend', () => {
+        if (!touchDragState) return;
+        const { sourceEl, key, label, ghost, currentTarget } = touchDragState;
+        touchDragState = null;
+        if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
+        if (sourceEl) sourceEl.classList.remove('wc-dragging');
+        if (currentTarget) {
+          currentTarget.classList.remove('wc-drop-target');
+          mergeWordCloudTerms(key, label, currentTarget.dataset.wcKey, currentTarget.dataset.wcLabel);
         }
       });
 
